@@ -1,5 +1,10 @@
 import { useMemo } from 'react';
 
+const teamColors = {
+  A: '#3b82f6', // blue
+  B: '#ef4444', // red
+};
+
 const Character = ({
   src,
   x,
@@ -15,6 +20,10 @@ const Character = ({
   moveMs = 0,
   opacity = 1,
   fadeMs = 0,
+  team,
+  hp,
+  maxHp,
+  typeLabel,
 }) => {
   const safeFrames = useMemo(() => Math.max(1, Math.floor(frames || 1)), [frames]);
   const safeFrameW = useMemo(() => Math.max(1, Math.floor(frameW || tileSize)), [frameW, tileSize]);
@@ -50,6 +59,9 @@ const Character = ({
     return durations;
   }, [safeFadeMs, safeMoveMs]);
 
+  const hpFraction = maxHp > 0 ? Math.max(0, Math.min(1, hp / maxHp)) : 1;
+  const barColor = team ? (teamColors[team] || '#888') : '#888';
+
   const containerStyle = {
     left: `${leftPos}px`,
     top: `${topPos}px`,
@@ -57,11 +69,22 @@ const Character = ({
     width: `${safeFrameW}px`,
     height: `${safeFrameH}px`,
     opacity: safeOpacity,
-    overflow: 'hidden',
+    overflow: 'visible',
     position: 'absolute',
     imageRendering: 'pixelated',
-    transform: direction === 'left' ? 'scaleX(-1)' : 'none',
     transformOrigin: 'center bottom',
+
+    transitionProperty: transitionProps.length ? transitionProps.join(', ') : 'none',
+    transitionDuration: transitionDurations.length ? transitionDurations.join(', ') : '0ms',
+    transitionTimingFunction: 'linear',
+  };
+
+  const spriteStyle = {
+    width: `${safeFrameW}px`,
+    height: `${safeFrameH}px`,
+    overflow: 'hidden',
+    imageRendering: 'pixelated',
+    transform: direction === 'left' ? 'scaleX(-1)' : 'none',
 
     backgroundImage: `url(${src})`,
     backgroundRepeat: 'no-repeat',
@@ -73,16 +96,78 @@ const Character = ({
     animationTimingFunction: `steps(${safeFrames})`,
     animationIterationCount: 'infinite',
 
-    transitionProperty: transitionProps.length ? transitionProps.join(', ') : 'none',
-    transitionDuration: transitionDurations.length ? transitionDurations.join(', ') : '0ms',
-    transitionTimingFunction: 'linear',
-
-    // Used by CSS keyframes in index.css
     ['--sheetShift']: `${safeFrameW * safeFrames}px`,
   };
 
+  const barWidth = Math.max(safeFrameW, 28);
+
   return (
-    <div className="character-sprite" style={containerStyle} />
+    <div style={containerStyle}>
+      {/* Type label */}
+      {typeLabel && (
+        <div style={{
+          position: 'absolute',
+          top: '-22px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          fontSize: '7px',
+          fontFamily: 'monospace',
+          color: '#fff',
+          backgroundColor: 'rgba(0,0,0,0.55)',
+          padding: '1px 3px',
+          borderRadius: '2px',
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none',
+          lineHeight: '1.2',
+          letterSpacing: '0.3px',
+        }}>
+          {typeLabel}
+        </div>
+      )}
+
+      {/* HP bar */}
+      {hp != null && maxHp > 0 && (
+        <div style={{
+          position: 'absolute',
+          top: '-10px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: `${barWidth}px`,
+          height: '4px',
+          backgroundColor: 'rgba(0,0,0,0.45)',
+          borderRadius: '2px',
+          overflow: 'hidden',
+          pointerEvents: 'none',
+        }}>
+          <div style={{
+            width: `${hpFraction * 100}%`,
+            height: '100%',
+            backgroundColor: barColor,
+            borderRadius: '2px',
+            transition: 'width 200ms linear',
+          }} />
+        </div>
+      )}
+
+      {/* Team dot */}
+      {team && (
+        <div style={{
+          position: 'absolute',
+          top: '-10px',
+          left: '50%',
+          transform: `translateX(${barWidth / 2 + 3}px)`,
+          width: '5px',
+          height: '5px',
+          borderRadius: '50%',
+          backgroundColor: barColor,
+          border: '1px solid rgba(255,255,255,0.6)',
+          pointerEvents: 'none',
+        }} />
+      )}
+
+      {/* Sprite */}
+      <div className="character-sprite" style={spriteStyle} />
+    </div>
   );
 };
 
