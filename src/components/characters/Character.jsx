@@ -24,6 +24,7 @@ const Character = ({
   hp,
   maxHp,
   typeLabel,
+  highlight, // 'attacking' | 'damaged' | null
 }) => {
   const safeFrames = useMemo(() => Math.max(1, Math.floor(frames || 1)), [frames]);
   const safeFrameW = useMemo(() => Math.max(1, Math.floor(frameW || tileSize)), [frameW, tileSize]);
@@ -62,6 +63,10 @@ const Character = ({
   const hpFraction = maxHp > 0 ? Math.max(0, Math.min(1, hp / maxHp)) : 1;
   const barColor = team ? (teamColors[team] || '#888') : '#888';
 
+  const glowColor = highlight === 'attacking' ? 'rgba(255, 200, 50, 0.7)'
+    : highlight === 'damaged' ? 'rgba(255, 60, 60, 0.7)'
+    : 'none';
+
   const containerStyle = {
     left: `${leftPos}px`,
     top: `${topPos}px`,
@@ -73,6 +78,7 @@ const Character = ({
     position: 'absolute',
     imageRendering: 'pixelated',
     transformOrigin: 'center bottom',
+    filter: glowColor !== 'none' ? `drop-shadow(0 0 6px ${glowColor}) drop-shadow(0 0 12px ${glowColor})` : 'none',
 
     transitionProperty: transitionProps.length ? transitionProps.join(', ') : 'none',
     transitionDuration: transitionDurations.length ? transitionDurations.join(', ') : '0ms',
@@ -107,7 +113,7 @@ const Character = ({
       {typeLabel && (
         <div style={{
           position: 'absolute',
-          top: '-22px',
+          top: '-30px',
           left: '50%',
           transform: 'translateX(-50%)',
           fontSize: '7px',
@@ -125,11 +131,33 @@ const Character = ({
         </div>
       )}
 
+      {/* HP text */}
+      {hp != null && maxHp > 0 && (
+        <div style={{
+          position: 'absolute',
+          top: '-20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          fontSize: '7px',
+          fontFamily: 'monospace',
+          fontWeight: 'bold',
+          color: hpFraction > 0.5 ? '#6fe86f' : hpFraction > 0.25 ? '#f0c040' : '#ff5555',
+          textShadow: '0 0 3px rgba(0,0,0,0.9), 0 1px 1px rgba(0,0,0,0.8)',
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none',
+          lineHeight: '1',
+          letterSpacing: '0.3px',
+          textAlign: 'center',
+        }}>
+          {Math.round(hp)}/{maxHp}
+        </div>
+      )}
+
       {/* HP bar */}
       {hp != null && maxHp > 0 && (
         <div style={{
           position: 'absolute',
-          top: '-10px',
+          top: '-11px',
           left: '50%',
           transform: 'translateX(-50%)',
           width: `${barWidth}px`,

@@ -430,8 +430,8 @@ const Arena = () => {
           target: "",
           amount: 0,
           destination: "",
-          hp: 100,
-          maxHp: 100,
+          hp: 10,
+          maxHp: 10,
           moveMs: 0,
           opacity: 1,
           fadeMs: 0,
@@ -628,7 +628,6 @@ const Arena = () => {
         const cell = parseDestination(a.destination ?? a.to ?? a.dest ?? a.position ?? a.cell ?? null);
         if (!cell) continue;
         if (cell.x < playableMinX || cell.x >= playableMaxX || cell.y < playableMinY || cell.y >= playableMaxY) continue;
-        if (isRiver(cell.x, cell.y)) continue;
 
         const lower = unitName.toLowerCase();
         const teamFromName =
@@ -654,8 +653,8 @@ const Arena = () => {
           target: typeof a.target === "string" ? a.target : "",
           amount: Number.isFinite(a.amount) ? a.amount : 0,
           destination: typeof a.destination === "string" ? a.destination : "",
-          hp: existing?.hp ?? 100,
-          maxHp: existing?.maxHp ?? 100,
+          hp: existing?.hp ?? 10,
+          maxHp: existing?.maxHp ?? 10,
           moveMs: 0,
           opacity: existing?.opacity ?? 1,
           fadeMs: 0,
@@ -669,6 +668,7 @@ const Arena = () => {
           units: cloneMap(unitsByName),
           log: { text: `${unitName} appears at ${candidate.coord || "?"}`, color: candidate.team === "A" ? "#93c5fd" : "#fca5a5" },
           stepMs,
+          action: { type: 'appears', unitName },
         });
         continue;
       }
@@ -679,7 +679,9 @@ const Arena = () => {
         const cell = parseDestination(a.destination ?? a.to ?? a.dest ?? a.position ?? a.cell ?? null);
         if (!cell) continue;
         if (cell.x < playableMinX || cell.x >= playableMaxX || cell.y < playableMinY || cell.y >= playableMaxY) continue;
-        if (isRiver(cell.x, cell.y)) continue;
+
+        const prevX = existing.x;
+        const prevY = existing.y;
 
         const candidate = syncFields({
           ...existing,
@@ -701,24 +703,36 @@ const Arena = () => {
           units: cloneMap(unitsByName),
           log: { text: `${unitName} moves to ${candidate.coord || "?"}`, color: existing.team === "A" ? "#93c5fd" : "#fca5a5" },
           stepMs,
+          action: { type: 'moves', unitName, prevX, prevY, toX: cell.x, toY: cell.y, team: existing.team },
         });
         continue;
       }
 
       if (actionKey === "attacks") {
         unitsByName.set(unitName, { ...syncFields(existing, a), moveMs: 0 });
-        const target = typeof a.target === "string" ? a.target : "?";
+        const targetName = typeof a.target === "string" ? a.target : null;
+        const targetUnit = targetName ? unitsByName.get(targetName) : null;
         result.push({
           units: cloneMap(unitsByName),
-          log: { text: `${unitName} attacks ${target}`, color: existing.team === "A" ? "#93c5fd" : "#fca5a5" },
+          log: { text: `${unitName} attacks ${targetName || "?"}`, color: existing.team === "A" ? "#93c5fd" : "#fca5a5" },
           stepMs,
+          action: {
+            type: 'attacks',
+            unitName,
+            targetName,
+            attackerX: existing.x, attackerY: existing.y,
+            attackerFootprintW: existing.footprintW, attackerFootprintH: existing.footprintH,
+            targetX: targetUnit?.x, targetY: targetUnit?.y,
+            targetFootprintW: targetUnit?.footprintW, targetFootprintH: targetUnit?.footprintH,
+            team: existing.team,
+          },
         });
         continue;
       }
 
       if (actionKey === "looseshealth") {
         const delta = Number.isFinite(a.amount) ? Math.abs(a.amount) : 0;
-        const maxHp = Number.isFinite(existing.maxHp) ? existing.maxHp : 100;
+        const maxHp = Number.isFinite(existing.maxHp) ? existing.maxHp : 10;
         const hpNow = Number.isFinite(existing.hp) ? existing.hp : maxHp;
         const nextHp = Math.max(0, hpNow - delta);
 
@@ -735,16 +749,19 @@ const Arena = () => {
           units: cloneMap(unitsByName),
           log: { text: `${unitName} takes ${delta} damage (${nextHp}/${maxHp} HP)`, color: existing.team === "A" ? "#93c5fd" : "#fca5a5" },
           stepMs,
+          action: { type: 'looseshealth', unitName, delta, team: existing.team },
         });
         continue;
       }
 
       if (actionKey === "dies") {
+        const dyingTeam = existing.team;
         unitsByName.delete(unitName);
         result.push({
           units: cloneMap(unitsByName),
-          log: { text: `${unitName} dies`, color: existing.team === "A" ? "#93c5fd" : "#fca5a5" },
+          log: { text: `${unitName} dies`, color: dyingTeam === "A" ? "#93c5fd" : "#fca5a5" },
           stepMs,
+          action: { type: 'dies', unitName, team: dyingTeam },
         });
         continue;
       }
@@ -755,6 +772,7 @@ const Arena = () => {
         units: cloneMap(unitsByName),
         log: null,
         stepMs,
+        action: null,
       });
     }
 
@@ -862,6 +880,32 @@ const Arena = () => {
     setCurrentStep(computedSnapshots.length - 1);
   }, [computedSnapshots.length]);
 
+  // Current action metadata for overlays
+  const currentAction = useMemo(() => {
+    if (currentStep < 0 || !computedSnapshots[currentStep]) return null;
+    return computedSnapshots[currentStep].action || null;
+  }, [currentStep, computedSnapshots]);
+
+  // Highlight map: unitName -> 'attacking' | 'damaged'
+  const highlightMap = useMemo(() => {
+    const map = {};
+    if (!currentAction) return map;
+    if (currentAction.type === 'attacks') {
+      if (currentAction.unitName) map[currentAction.unitName] = 'attacking';
+      if (currentAction.targetName) map[currentAction.targetName] = 'damaged';
+    }
+    if (currentAction.type === 'looseshealth') {
+      if (currentAction.unitName) map[currentAction.unitName] = 'damaged';
+    }
+    return map;
+  }, [currentAction]);
+
+  // Helper to convert grid coords to pixel center for SVG overlays
+  const gridToPixelCenter = useCallback((gx, gy, fw = 1, fh = 1) => ({
+    px: (gx + fw / 2) * tileSize,
+    py: (gy + fh / 2) * tileSize,
+  }), [tileSize]);
+
   const winnerLabel = useMemo(() => {
     if (!battleWinner) return null;
     if (battleWinner === "A") return "Team A wins";
@@ -962,6 +1006,79 @@ const Arena = () => {
         />
 
         <div className="absolute inset-0 pointer-events-none">
+          {/* SVG overlay for movement trails and attack lines */}
+          {terrainLoaded && currentAction && (
+            <svg
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 }}
+              viewBox={`0 0 ${terrainSize.w} ${terrainSize.h}`}
+            >
+              <defs>
+                <marker id="arrowhead-attack" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+                  <polygon points="0 0, 8 3, 0 6" fill="#ff4444" />
+                </marker>
+                <marker id="arrowhead-move" markerWidth="6" markerHeight="5" refX="5" refY="2.5" orient="auto">
+                  <polygon points="0 0, 6 2.5, 0 5" fill="#44ff88" />
+                </marker>
+              </defs>
+
+              {/* Movement trail */}
+              {currentAction.type === 'moves' && Number.isFinite(currentAction.prevX) && Number.isFinite(currentAction.prevY) && (() => {
+                const movingUnit = units.find(u => u.unitName === currentAction.unitName);
+                const fw = movingUnit?.footprintW || 1;
+                const fh = movingUnit?.footprintH || 1;
+                const from = gridToPixelCenter(currentAction.prevX, currentAction.prevY, fw, fh);
+                const to = gridToPixelCenter(currentAction.toX, currentAction.toY, fw, fh);
+                return (
+                  <>
+                    <line
+                      x1={from.px} y1={from.py} x2={to.px} y2={to.py}
+                      stroke="#44ff88" strokeWidth="2" strokeDasharray="6 4" opacity="0.7"
+                      markerEnd="url(#arrowhead-move)"
+                    />
+                    <circle cx={from.px} cy={from.py} r="4" fill="#44ff88" opacity="0.5" />
+                  </>
+                );
+              })()}
+
+              {/* Attack line */}
+              {currentAction.type === 'attacks' && Number.isFinite(currentAction.attackerX) && Number.isFinite(currentAction.targetX) && (() => {
+                const from = gridToPixelCenter(currentAction.attackerX, currentAction.attackerY, currentAction.attackerFootprintW || 1, currentAction.attackerFootprintH || 1);
+                const to = gridToPixelCenter(currentAction.targetX, currentAction.targetY, currentAction.targetFootprintW || 1, currentAction.targetFootprintH || 1);
+                return (
+                  <>
+                    <line
+                      x1={from.px} y1={from.py} x2={to.px} y2={to.py}
+                      stroke="#ff4444" strokeWidth="2" opacity="0.8"
+                      markerEnd="url(#arrowhead-attack)"
+                    />
+                    {/* Impact burst at target */}
+                    <circle cx={to.px} cy={to.py} r="8" fill="none" stroke="#ff4444" strokeWidth="2" opacity="0.6" />
+                    <circle cx={to.px} cy={to.py} r="14" fill="none" stroke="#ff4444" strokeWidth="1" opacity="0.3" />
+                  </>
+                );
+              })()}
+
+              {/* Damage indicator */}
+              {currentAction.type === 'looseshealth' && (() => {
+                const damagedUnit = units.find(u => u.unitName === currentAction.unitName);
+                if (!damagedUnit) return null;
+                const pos = gridToPixelCenter(damagedUnit.x, damagedUnit.y, damagedUnit.footprintW || 1, damagedUnit.footprintH || 1);
+                return (
+                  <>
+                    <circle cx={pos.px} cy={pos.py} r="10" fill="none" stroke="#ff4444" strokeWidth="2" opacity="0.6" />
+                    <text
+                      x={pos.px + 14} y={pos.py - 10}
+                      fill="#ff4444" fontSize="12" fontFamily="monospace" fontWeight="bold"
+                      style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)' }}
+                    >
+                      -{currentAction.delta}
+                    </text>
+                  </>
+                );
+              })()}
+            </svg>
+          )}
+
           {units.map((pos) => {
             const sprite = spriteSheets[pos.spriteIndex] ?? spriteSheets[0];
             const footprintW = Math.max(1, Math.floor(sprite.footprintW || pos.footprintW || 1));
@@ -989,6 +1106,7 @@ const Arena = () => {
                 hp={pos.hp}
                 maxHp={pos.maxHp}
                 typeLabel={typeLabelBySpriteIndex[pos.spriteIndex]}
+                highlight={highlightMap[pos.unitName] || null}
               />
             );
           })}
