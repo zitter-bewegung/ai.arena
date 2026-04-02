@@ -1012,11 +1012,17 @@ const Arena = () => {
               viewBox={`0 0 ${terrainSize.w} ${terrainSize.h}`}
             >
               <defs>
-                <marker id="arrowhead-attack" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-                  <polygon points="0 0, 8 3, 0 6" fill="#ff4444" />
+                <marker id="arrowhead-attack-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+                  <polygon points="0 0, 8 3, 0 6" fill="#00eaff" />
                 </marker>
-                <marker id="arrowhead-move" markerWidth="6" markerHeight="5" refX="5" refY="2.5" orient="auto">
-                  <polygon points="0 0, 6 2.5, 0 5" fill="#44ff88" />
+                <marker id="arrowhead-attack-b" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+                  <polygon points="0 0, 8 3, 0 6" fill="#ff2200" />
+                </marker>
+                <marker id="arrowhead-move-a" markerWidth="6" markerHeight="5" refX="5" refY="2.5" orient="auto">
+                  <polygon points="0 0, 6 2.5, 0 5" fill="#00eaff" />
+                </marker>
+                <marker id="arrowhead-move-b" markerWidth="6" markerHeight="5" refX="5" refY="2.5" orient="auto">
+                  <polygon points="0 0, 6 2.5, 0 5" fill="#ff6600" />
                 </marker>
               </defs>
 
@@ -1027,14 +1033,16 @@ const Arena = () => {
                 const fh = movingUnit?.footprintH || 1;
                 const from = gridToPixelCenter(currentAction.prevX, currentAction.prevY, fw, fh);
                 const to = gridToPixelCenter(currentAction.toX, currentAction.toY, fw, fh);
+                const moveColor = currentAction.team === 'A' ? '#00eaff' : '#ff6600';
+                const arrowId = currentAction.team === 'A' ? 'arrowhead-move-a' : 'arrowhead-move-b';
                 return (
                   <>
                     <line
                       x1={from.px} y1={from.py} x2={to.px} y2={to.py}
-                      stroke="#44ff88" strokeWidth="2" strokeDasharray="6 4" opacity="0.7"
-                      markerEnd="url(#arrowhead-move)"
+                      stroke={moveColor} strokeWidth="2.5" strokeDasharray="6 4" opacity="0.9"
+                      markerEnd={`url(#${arrowId})`}
                     />
-                    <circle cx={from.px} cy={from.py} r="4" fill="#44ff88" opacity="0.5" />
+                    <circle cx={from.px} cy={from.py} r="4" fill={moveColor} opacity="0.7" />
                   </>
                 );
               })()}
@@ -1043,16 +1051,18 @@ const Arena = () => {
               {currentAction.type === 'attacks' && Number.isFinite(currentAction.attackerX) && Number.isFinite(currentAction.targetX) && (() => {
                 const from = gridToPixelCenter(currentAction.attackerX, currentAction.attackerY, currentAction.attackerFootprintW || 1, currentAction.attackerFootprintH || 1);
                 const to = gridToPixelCenter(currentAction.targetX, currentAction.targetY, currentAction.targetFootprintW || 1, currentAction.targetFootprintH || 1);
+                const atkColor = currentAction.team === 'A' ? '#00eaff' : '#ff2200';
+                const arrowId = currentAction.team === 'A' ? 'arrowhead-attack-a' : 'arrowhead-attack-b';
                 return (
                   <>
                     <line
                       x1={from.px} y1={from.py} x2={to.px} y2={to.py}
-                      stroke="#ff4444" strokeWidth="2" opacity="0.8"
-                      markerEnd="url(#arrowhead-attack)"
+                      stroke={atkColor} strokeWidth="3" opacity="1"
+                      markerEnd={`url(#${arrowId})`}
                     />
                     {/* Impact burst at target */}
-                    <circle cx={to.px} cy={to.py} r="8" fill="none" stroke="#ff4444" strokeWidth="2" opacity="0.6" />
-                    <circle cx={to.px} cy={to.py} r="14" fill="none" stroke="#ff4444" strokeWidth="1" opacity="0.3" />
+                    <circle cx={to.px} cy={to.py} r="8" fill="none" stroke={atkColor} strokeWidth="3" opacity="0.8" />
+                    <circle cx={to.px} cy={to.py} r="14" fill="none" stroke={atkColor} strokeWidth="2" opacity="0.5" />
                   </>
                 );
               })()}
