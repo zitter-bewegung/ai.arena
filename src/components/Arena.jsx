@@ -576,7 +576,6 @@ const Arena = () => {
       for (const c of getFootprintCells(x, y, unitLike)) {
         if (c.x < playableMinX || c.x >= playableMaxX || c.y < playableMinY || c.y >= playableMaxY)
           return false;
-        if (isRiver(c.x, c.y)) return false;
         if (occupied.has(keyOf(c.x, c.y))) return false;
       }
       return true;
