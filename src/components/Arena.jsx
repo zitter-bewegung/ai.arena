@@ -479,6 +479,21 @@ const Arena = () => {
       return { snapshots: [], winner: null };
     }
 
+    // Unit stats keyed by backend UnitType string (JsonStringEnumConverter)
+    const unitStatsByType = {
+      light:      { movement: 13, range: 1 },
+      heavy:      { movement: 5,  range: 1 },
+      fast:       { movement: 15, range: 1 },
+      shortrange: { movement: 6,  range: 3 },
+      longrange:  { movement: 3,  range: 6 },
+    };
+    const getUnitStats = (unit) => {
+      const t = unit?.unitType;
+      if (t == null) return null;
+      const key = String(t).toLowerCase().replace(/[^a-z]/g, '');
+      return unitStatsByType[key] || null;
+    };
+
     const rawActions =
       teamResponse.actions || teamResponse.battle?.actions || teamResponse.result?.actions || [];
     if (!Array.isArray(rawActions) || rawActions.length === 0) {
@@ -608,6 +623,7 @@ const Arena = () => {
     // Build snapshots
     const result = [];
     const unitsByName = new Map();
+    let lastAttack = null; // { attacker, target } — used to detect counterattacks
 
     for (const a of rawActions) {
       if (!a || typeof a !== "object") continue;
@@ -667,7 +683,7 @@ const Arena = () => {
         unitsByName.set(unitName, candidate);
         result.push({
           units: cloneMap(unitsByName),
-          log: { text: `${unitName} appears at ${candidate.coord || "?"}`, color: candidate.team === "A" ? "#93c5fd" : "#fca5a5" },
+          log: { text: `[SPAWN] ${unitName} appears at ${candidate.coord || "?"}`, color: candidate.team === "A" ? "#93c5fd" : "#fca5a5" },
           stepMs,
           action: { type: 'appears', unitName },
         });
@@ -698,11 +714,17 @@ const Arena = () => {
         if (!canOccupyAt(unitsByName, unitName, candidate.x, candidate.y, candidate)) continue;
 
         const dx = candidate.x - existing.x;
+        const dy = candidate.y - existing.y;
+        const moveDist = Math.round(Math.sqrt(dx * dx + dy * dy) * 10) / 10;
         const nextDirection = dx < 0 ? "left" : dx > 0 ? "right" : existing.direction;
+        const fromCoord = cellToCoord(existing.x, existing.y) || "?";
+        const moveTypeLabel = typeLabelBySpriteIndex[existing.spriteIndex] || '';
+        const moveStats = getUnitStats(existing);
+        const maxMove = moveStats ? moveStats.movement : '?';
         unitsByName.set(unitName, { ...candidate, direction: nextDirection });
         result.push({
           units: cloneMap(unitsByName),
-          log: { text: `${unitName} moves to ${candidate.coord || "?"}`, color: existing.team === "A" ? "#93c5fd" : "#fca5a5" },
+          log: { text: `[MOVE]  ${unitName}${moveTypeLabel ? ` (${moveTypeLabel})` : ''} ${fromCoord} -> ${candidate.coord || "?"} (${moveDist}/${maxMove})`, color: existing.team === "A" ? "#93c5fd" : "#fca5a5" },
           stepMs,
           action: { type: 'moves', unitName, prevX, prevY, toX: cell.x, toY: cell.y, team: existing.team },
         });
@@ -713,9 +735,22 @@ const Arena = () => {
         unitsByName.set(unitName, { ...syncFields(existing, a), moveMs: 0 });
         const targetName = typeof a.target === "string" ? a.target : null;
         const targetUnit = targetName ? unitsByName.get(targetName) : null;
+        const atkDist = targetUnit
+          ? Math.round(Math.sqrt((existing.x - targetUnit.x) ** 2 + (existing.y - targetUnit.y) ** 2) * 10) / 10
+          : '?';
+        const atkTypeLabel = typeLabelBySpriteIndex[existing.spriteIndex] || '';
+        const tgtTypeLabel = targetUnit ? (typeLabelBySpriteIndex[targetUnit.spriteIndex] || '') : '';
+        const atkStats = getUnitStats(existing);
+        const maxRange = atkStats ? atkStats.range : '?';
+        const isCounter = lastAttack && lastAttack.attacker === targetName && lastAttack.target === unitName;
+        const tag = isCounter ? '[CTR]' : '[ATK]';
+        const label = isCounter
+          ? `${tag}   ${unitName}${atkTypeLabel ? ` (${atkTypeLabel})` : ''} << ${targetName || "?"}${tgtTypeLabel ? ` (${tgtTypeLabel})` : ''} (range ${atkDist}/${maxRange}) [half dmg]`
+          : `${tag}   ${unitName}${atkTypeLabel ? ` (${atkTypeLabel})` : ''} >> ${targetName || "?"}${tgtTypeLabel ? ` (${tgtTypeLabel})` : ''} (range ${atkDist}/${maxRange})`;
+        lastAttack = { attacker: unitName, target: targetName };
         result.push({
           units: cloneMap(unitsByName),
-          log: { text: `${unitName} attacks ${targetName || "?"}`, color: existing.team === "A" ? "#93c5fd" : "#fca5a5" },
+          log: { text: label, color: existing.team === "A" ? "#93c5fd" : "#fca5a5" },
           stepMs,
           action: {
             type: 'attacks',
@@ -748,7 +783,7 @@ const Arena = () => {
         });
         result.push({
           units: cloneMap(unitsByName),
-          log: { text: `${unitName} takes ${delta} damage (${nextHp}/${maxHp} HP)`, color: existing.team === "A" ? "#93c5fd" : "#fca5a5" },
+          log: { text: `[DMG]   ${unitName} -${delta} HP (${nextHp}/${maxHp})`, color: existing.team === "A" ? "#93c5fd" : "#fca5a5" },
           stepMs,
           action: { type: 'looseshealth', unitName, delta, team: existing.team },
         });
@@ -760,7 +795,7 @@ const Arena = () => {
         unitsByName.delete(unitName);
         result.push({
           units: cloneMap(unitsByName),
-          log: { text: `${unitName} dies`, color: dyingTeam === "A" ? "#93c5fd" : "#fca5a5" },
+          log: { text: `[KILL]  ${unitName} destroyed!`, color: dyingTeam === "A" ? "#93c5fd" : "#fca5a5" },
           stepMs,
           action: { type: 'dies', unitName, team: dyingTeam },
         });
@@ -787,7 +822,7 @@ const Arena = () => {
     else if (remainingA === 0 && remainingB === 0) winner = "Draw";
 
     return { snapshots: result, winner };
-  }, [cols, gameStarted, pickSpriteIndexFromBackend, rows, spriteSheets, teamError, teamResponse, terrainLoaded]);
+  }, [cols, gameStarted, pickSpriteIndexFromBackend, rows, spriteSheets, teamError, teamResponse, terrainLoaded, typeLabelBySpriteIndex]);
 
   // Start playback when snapshots become available
   useEffect(() => {
@@ -871,6 +906,16 @@ const Arena = () => {
     setCurrentStep((s) => Math.max(s - 1, 0));
   }, []);
 
+  const handleStepBackward10 = useCallback(() => {
+    setIsPlaying(false);
+    setCurrentStep((s) => Math.max(s - 10, 0));
+  }, []);
+
+  const handleStepForward10 = useCallback(() => {
+    setIsPlaying(false);
+    setCurrentStep((s) => Math.min(s + 10, computedSnapshots.length - 1));
+  }, [computedSnapshots.length]);
+
   const handleSkipToStart = useCallback(() => {
     setIsPlaying(false);
     setCurrentStep(0);
@@ -880,6 +925,41 @@ const Arena = () => {
     setIsPlaying(false);
     setCurrentStep(computedSnapshots.length - 1);
   }, [computedSnapshots.length]);
+
+  // Build turn index: group snapshots into logical turns (one per unit action start)
+  const turnEntries = useMemo(() => {
+    if (computedSnapshots.length === 0) return [];
+    const entries = [];
+    let turnNum = 1;
+    for (let i = 0; i < computedSnapshots.length; i++) {
+      const action = computedSnapshots[i].action;
+      if (!action) continue;
+      const { type, unitName } = action;
+      if (type === 'moves' || type === 'attacks' || type === 'appears') {
+        const log = computedSnapshots[i].log;
+        const isCounter = log?.text?.startsWith('[CTR]');
+        if (!isCounter) {
+          entries.push({
+            stepIndex: i,
+            label: `${turnNum}. ${log?.text || `${unitName} ${type}`}`,
+          });
+          turnNum++;
+        }
+      }
+    }
+    return entries;
+  }, [computedSnapshots]);
+
+  // Find which turn entry the current step belongs to
+  const currentTurnIndex = useMemo(() => {
+    if (turnEntries.length === 0) return 0;
+    let best = 0;
+    for (let i = 0; i < turnEntries.length; i++) {
+      if (turnEntries[i].stepIndex <= currentStep) best = i;
+      else break;
+    }
+    return best;
+  }, [turnEntries, currentStep]);
 
   // Current action metadata for overlays
   const currentAction = useMemo(() => {
@@ -1158,6 +1238,7 @@ const Arena = () => {
                 hp={pos.hp}
                 maxHp={pos.maxHp}
                 typeLabel={typeLabelBySpriteIndex[pos.spriteIndex]}
+                unitId={pos.unitName}
                 highlight={highlightMap[pos.unitName] || null}
               />
             );
@@ -1206,11 +1287,24 @@ const Arena = () => {
           );
         })()}
 
-        {/* Legend */}
-        {gameStarted && !showWelcome && (
-          <div className="absolute -bottom-3 translate-y-full left-0 z-20 pointer-events-none text-white bg-black/60 px-3 py-2 rounded" style={{ fontSize: '10px', fontFamily: 'monospace' }}>
+        {/* Legend — portaled so it's not clipped */}
+        {gameStarted && !showWelcome && createPortal(
+          <div style={{
+            position: 'fixed',
+            left: '16px',
+            top: '16px',
+            zIndex: 50,
+            pointerEvents: 'none',
+            color: '#fff',
+            backgroundColor: 'rgba(0,0,0,0.65)',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            fontSize: '10px',
+            fontFamily: 'monospace',
+            backdropFilter: 'blur(8px)',
+          }}>
             <div style={{ marginBottom: '4px', fontWeight: 'bold', fontSize: '11px' }}>Unit Types</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {legendEntries.map((entry, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <div style={{
@@ -1231,106 +1325,181 @@ const Arena = () => {
                 </div>
               ))}
             </div>
-            <div style={{ marginTop: '6px', display: 'flex', gap: '12px' }}>
+            <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <span><span style={{ color: '#3b82f6' }}>{'\u2588'}</span> Team A (left)</span>
               <span><span style={{ color: '#ef4444' }}>{'\u2588'}</span> Team B (right)</span>
             </div>
-          </div>
+          </div>,
+          document.getElementById('overlay-root')
         )}
 
       </div>
     </div>
 
-    {/* Playback controls — portaled to overlay to avoid overflow-hidden clipping */}
+    {/* Playback controls + timeline — bottom-left */}
     {gameStarted && !showWelcome && computedSnapshots.length > 0 && createPortal(
       <div
         style={{
           position: 'fixed',
           bottom: '16px',
-          left: '50%',
-          transform: 'translateX(-50%)',
+          left: '16px',
           zIndex: 50,
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: 'column',
           gap: '6px',
           backgroundColor: 'rgba(0,0,0,0.8)',
           borderRadius: '8px',
-          padding: '8px 16px',
+          padding: '10px 14px',
           fontFamily: 'monospace',
           fontSize: '12px',
           color: '#fff',
           userSelect: 'none',
           pointerEvents: 'auto',
           backdropFilter: 'blur(8px)',
+          minWidth: '320px',
         }}
       >
-        <button
-          type="button"
-          onClick={handleSkipToStart}
-          title="Skip to start"
-          style={controlBtnStyle}
-        >
-          {'\u23EE'}
-        </button>
-        <button
-          type="button"
-          onClick={handleStepBackward}
-          title="Previous action"
-          style={controlBtnStyle}
-        >
-          {'\u23EA'}
-        </button>
-        <button
-          type="button"
-          onClick={handlePlayPause}
-          title={isPlaying ? "Pause" : "Play"}
-          style={{ ...controlBtnStyle, fontSize: '16px', width: '32px' }}
-        >
-          {isPlaying ? '\u23F8' : '\u25B6'}
-        </button>
-        <button
-          type="button"
-          onClick={handleStepForward}
-          title="Next action"
-          style={controlBtnStyle}
-        >
-          {'\u23E9'}
-        </button>
-        <button
-          type="button"
-          onClick={handleSkipToEnd}
-          title="Skip to end"
-          style={controlBtnStyle}
-        >
-          {'\u23ED'}
-        </button>
+        {/* Playback buttons row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button
+            type="button"
+            onClick={handleSkipToStart}
+            title="Skip to start"
+            style={controlBtnStyle}
+          >
+            {'\u23EE'}
+          </button>
+          <button
+            type="button"
+            onClick={handleStepBackward10}
+            title="Back 10 steps"
+            style={{ ...controlBtnStyle, fontSize: '10px', width: '32px' }}
+          >
+            -10
+          </button>
+          <button
+            type="button"
+            onClick={handleStepBackward}
+            title="Previous action"
+            style={controlBtnStyle}
+          >
+            {'\u23EA'}
+          </button>
+          <button
+            type="button"
+            onClick={handlePlayPause}
+            title={isPlaying ? "Pause" : "Play"}
+            style={{ ...controlBtnStyle, fontSize: '16px', width: '32px' }}
+          >
+            {isPlaying ? '\u23F8' : '\u25B6'}
+          </button>
+          <button
+            type="button"
+            onClick={handleStepForward}
+            title="Next action"
+            style={controlBtnStyle}
+          >
+            {'\u23E9'}
+          </button>
+          <button
+            type="button"
+            onClick={handleStepForward10}
+            title="Forward 10 steps"
+            style={{ ...controlBtnStyle, fontSize: '10px', width: '32px' }}
+          >
+            +10
+          </button>
+          <button
+            type="button"
+            onClick={handleSkipToEnd}
+            title="Skip to end"
+            style={controlBtnStyle}
+          >
+            {'\u23ED'}
+          </button>
 
-        <span style={{ margin: '0 6px', color: '#aaa', fontSize: '11px', minWidth: '70px', textAlign: 'center' }}>
-          {currentStep + 1} / {computedSnapshots.length}
-        </span>
+          <span style={{ margin: '0 6px', color: '#aaa', fontSize: '11px', minWidth: '70px', textAlign: 'center' }}>
+            {currentStep + 1} / {computedSnapshots.length}
+          </span>
 
-        <select
-          value={playbackSpeed}
-          onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
-          title="Playback speed"
-          style={{
-            background: 'rgba(255,255,255,0.15)',
-            border: '1px solid rgba(255,255,255,0.3)',
-            borderRadius: '4px',
-            color: '#fff',
-            fontSize: '11px',
-            padding: '2px 4px',
-            cursor: 'pointer',
-            outline: 'none',
-          }}
-        >
-          <option value={0.25}>0.25x</option>
-          <option value={0.5}>0.5x</option>
-          <option value={1}>1x</option>
-          <option value={2}>2x</option>
-          <option value={4}>4x</option>
-          <option value={8}>8x</option>
-        </select>
+          <select
+            value={playbackSpeed}
+            onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
+            title="Playback speed"
+            style={{
+              background: 'rgba(255,255,255,0.15)',
+              border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: '4px',
+              color: '#fff',
+              fontSize: '11px',
+              padding: '2px 4px',
+              cursor: 'pointer',
+              outline: 'none',
+            }}
+          >
+            <option value={0.25}>0.25x</option>
+            <option value={0.5}>0.5x</option>
+            <option value={1}>1x</option>
+            <option value={2}>2x</option>
+            <option value={4}>4x</option>
+            <option value={8}>8x</option>
+          </select>
+        </div>
+        {/* Slider */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+          <span style={{ color: '#888', fontSize: '10px', minWidth: '14px' }}>1</span>
+          <input
+            type="range"
+            min={0}
+            max={computedSnapshots.length - 1}
+            value={currentStep}
+            onChange={(e) => {
+              setIsPlaying(false);
+              setCurrentStep(Number(e.target.value));
+            }}
+            style={{
+              flex: 1,
+              height: '4px',
+              cursor: 'pointer',
+              accentColor: '#3b82f6',
+            }}
+          />
+          <span style={{ color: '#888', fontSize: '10px', minWidth: '14px' }}>{computedSnapshots.length}</span>
+        </div>
+
+        {/* Turn dropdown */}
+        {turnEntries.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%' }}>
+            <span style={{ color: '#aaa', fontSize: '10px', whiteSpace: 'nowrap' }}>Turn:</span>
+            <select
+              value={currentTurnIndex}
+              onChange={(e) => {
+                const idx = Number(e.target.value);
+                const entry = turnEntries[idx];
+                if (entry) {
+                  setIsPlaying(false);
+                  setCurrentStep(entry.stepIndex);
+                }
+              }}
+              style={{
+                flex: 1,
+                background: 'rgba(255,255,255,0.12)',
+                border: '1px solid rgba(255,255,255,0.25)',
+                borderRadius: '4px',
+                color: '#fff',
+                fontSize: '10px',
+                padding: '3px 4px',
+                cursor: 'pointer',
+                outline: 'none',
+                maxWidth: '300px',
+              }}
+            >
+              {turnEntries.map((entry, idx) => (
+                <option key={idx} value={idx}>{entry.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>,
       document.getElementById('overlay-root')
     )}
@@ -1343,7 +1512,7 @@ const Arena = () => {
           right: '16px',
           top: '16px',
           bottom: '16px',
-          width: '260px',
+          width: '320px',
           backgroundColor: 'rgba(0,0,0,0.75)',
           color: '#fff',
           borderRadius: '6px',
@@ -1368,11 +1537,35 @@ const Arena = () => {
         {battleLog.length === 0 && (
           <div style={{ color: '#888' }}>Waiting for battle...</div>
         )}
-        {battleLog.map((entry) => (
-          <div key={entry.id} style={{ color: entry.color || '#ccc', marginBottom: '2px', lineHeight: '1.4' }}>
-            {entry.text}
-          </div>
-        ))}
+        {battleLog.map((entry, idx) => {
+          const isAttack = entry.text.startsWith('[ATK]');
+          const isCounter = entry.text.startsWith('[CTR]');
+          const isKill = entry.text.startsWith('[KILL]');
+          const isDmg = entry.text.startsWith('[DMG]');
+          const isSpawn = entry.text.startsWith('[SPAWN]');
+          // Add a separator line before attack entries to group action sequences
+          const prevEntry = idx > 0 ? battleLog[idx - 1] : null;
+          const showSeparator = isAttack && prevEntry && !prevEntry.text.startsWith('[ATK]') && !prevEntry.text.startsWith('[CTR]');
+          return (
+            <div key={entry.id}>
+              {showSeparator && (
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '4px 0' }} />
+              )}
+              <div style={{
+                color: entry.color || '#ccc',
+                marginBottom: '2px',
+                lineHeight: '1.4',
+                fontWeight: (isAttack || isKill) ? 'bold' : 'normal',
+                fontStyle: isCounter ? 'italic' : 'normal',
+                fontSize: isKill ? '12px' : '11px',
+                opacity: isSpawn ? 0.7 : 1,
+                paddingLeft: (isDmg || isCounter) ? '12px' : '0',
+              }}>
+                {entry.text}
+              </div>
+            </div>
+          );
+        })}
       </div>,
       document.getElementById('overlay-root')
     )}

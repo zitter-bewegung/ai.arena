@@ -24,6 +24,7 @@ const Character = ({
   hp,
   maxHp,
   typeLabel,
+  unitId,
   highlight, // 'attacking' | 'damaged' | null
 }) => {
   const safeFrames = useMemo(() => Math.max(1, Math.floor(frames || 1)), [frames]);
@@ -109,11 +110,35 @@ const Character = ({
 
   return (
     <div style={containerStyle}>
+      {/* Unit ID label */}
+      {unitId && (
+        <div style={{
+          position: 'absolute',
+          top: '-40px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          fontSize: '8px',
+          fontFamily: 'monospace',
+          fontWeight: 'bold',
+          color: team ? (teamColors[team] || '#fff') : '#fff',
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          padding: '1px 4px',
+          borderRadius: '2px',
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none',
+          lineHeight: '1.2',
+          letterSpacing: '0.3px',
+          border: `1px solid ${team ? (teamColors[team] || '#555') : '#555'}`,
+        }}>
+          {unitId}
+        </div>
+      )}
+
       {/* Type label */}
       {typeLabel && (
         <div style={{
           position: 'absolute',
-          top: '-30px',
+          top: '-28px',
           left: '50%',
           transform: 'translateX(-50%)',
           fontSize: '7px',
