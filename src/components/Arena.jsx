@@ -85,6 +85,8 @@ const Arena = () => {
 
   useEffect(() => {
     if (!gameStarted) return;
+    // Skip API call if teamResponse is already set (e.g. loaded from a replay file)
+    if (teamResponse) return;
     let cancelled = false;
 
     const run = async () => {
@@ -934,27 +936,68 @@ const Arena = () => {
             <div className="relative z-10 pointer-events-auto text-center bg-black/60 text-white px-6 py-6 rounded">
               <div className="text-3xl font-semibold">CSS Arena</div>
               <div className="mt-3 text-sm">натисніть Play щоб розпочати гру</div>
-              <button
-                type="button"
-                className="mt-5 bg-white/90 text-black px-5 py-2 rounded cursor-pointer"
-                onClick={() => {
-                  setTeamError(null);
-                  setTeamResponse(null);
-                  setUnits([]);
-                  setBattleLog([]);
-                  setBattleWinner(null);
-                  setPlayerTeam(null);
-                  setPlayerTeamLabelVisible(false);
-                  setPlayerTeamLabelOpaque(false);
-                  setCurrentStep(-1);
-                  setIsPlaying(false);
-                  setGameStarted(true);
-                  setWelcomeFading(true);
-                  window.setTimeout(() => setShowWelcome(false), welcomeFadeMs);
-                }}
-              >
-                Play
-              </button>
+              <div className="mt-5 flex gap-3 justify-center">
+                <button
+                  type="button"
+                  className="bg-white/90 text-black px-5 py-2 rounded cursor-pointer"
+                  onClick={() => {
+                    setTeamError(null);
+                    setTeamResponse(null);
+                    setUnits([]);
+                    setBattleLog([]);
+                    setBattleWinner(null);
+                    setPlayerTeam(null);
+                    setPlayerTeamLabelVisible(false);
+                    setPlayerTeamLabelOpaque(false);
+                    setCurrentStep(-1);
+                    setIsPlaying(false);
+                    setGameStarted(true);
+                    setWelcomeFading(true);
+                    window.setTimeout(() => setShowWelcome(false), welcomeFadeMs);
+                  }}
+                >
+                  Play
+                </button>
+                <button
+                  type="button"
+                  className="bg-white/90 text-black px-5 py-2 rounded cursor-pointer"
+                  onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = ".json";
+                    input.onchange = (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        try {
+                          const data = JSON.parse(ev.target.result);
+                          setTeamError(null);
+                          setTeamResponse(data);
+                          setUnits([]);
+                          setBattleLog([]);
+                          setBattleWinner(null);
+                          setPlayerTeam(null);
+                          setPlayerTeamLabelVisible(false);
+                          setPlayerTeamLabelOpaque(false);
+                          setCurrentStep(-1);
+                          setIsPlaying(false);
+                          setGameStarted(true);
+                          setWelcomeFading(true);
+                          window.setTimeout(() => setShowWelcome(false), welcomeFadeMs);
+                        } catch (err) {
+                          console.error("Failed to parse game log:", err);
+                          setTeamError(err);
+                        }
+                      };
+                      reader.readAsText(file);
+                    };
+                    input.click();
+                  }}
+                >
+                  Load Replay
+                </button>
+              </div>
             </div>
           </div>
         ) : null}
@@ -1122,12 +1165,46 @@ const Arena = () => {
         </div>
 
         {/* team labels outside the arena */}
-        <div className="absolute top-1/2 -translate-y-1/2 -left-3 -translate-x-full z-20 pointer-events-none text-sm bg-black/60 px-3 py-2 rounded" style={{ color: '#3b82f6' }}>
-          Team A
-        </div>
-        <div className="absolute top-1/2 -translate-y-1/2 -right-3 translate-x-full z-20 pointer-events-none text-sm bg-black/60 px-3 py-2 rounded" style={{ color: '#ef4444' }}>
-          Team B
-        </div>
+        {(() => {
+          const meta = teamResponse?.metadata;
+          let labelA = "Team A";
+          let labelB = "Team B";
+          if (meta) {
+            if (meta.mode === "pvb") {
+              // agentTeam tells us which team the checkpoint controls
+              if (meta.agentTeam?.toLowerCase().includes("a")) {
+                labelA = meta.checkpointA || "Agent";
+                labelB = "Server Bot";
+              } else {
+                labelA = "Server Bot";
+                labelB = meta.checkpointA || "Agent";
+              }
+            } else if (meta.mode === "pvp") {
+              // teamA/teamB say which team name each client got
+              if (meta.teamA?.toLowerCase().includes("a")) {
+                labelA = meta.checkpointA || "Agent A";
+                labelB = meta.checkpointB || "Agent B";
+              } else {
+                labelA = meta.checkpointB || "Agent B";
+                labelB = meta.checkpointA || "Agent A";
+              }
+            }
+          }
+          // Strip .pt extension for cleaner display
+          const clean = (s) => s.replace(/\.pt$/, "");
+          return (
+            <>
+              <div className="absolute top-1/2 -translate-y-1/2 -left-3 -translate-x-full z-20 pointer-events-none text-sm bg-black/60 px-3 py-2 rounded text-center" style={{ color: '#3b82f6', maxWidth: '160px' }}>
+                <div>Team A</div>
+                {meta && <div style={{ fontSize: '10px', opacity: 0.7, marginTop: '2px' }}>{clean(labelA)}</div>}
+              </div>
+              <div className="absolute top-1/2 -translate-y-1/2 -right-3 translate-x-full z-20 pointer-events-none text-sm bg-black/60 px-3 py-2 rounded text-center" style={{ color: '#ef4444', maxWidth: '160px' }}>
+                <div>Team B</div>
+                {meta && <div style={{ fontSize: '10px', opacity: 0.7, marginTop: '2px' }}>{clean(labelB)}</div>}
+              </div>
+            </>
+          );
+        })()}
 
         {/* Legend */}
         {gameStarted && !showWelcome && (
@@ -1281,6 +1358,13 @@ const Arena = () => {
         <div style={{ fontWeight: 'bold', fontSize: '12px', marginBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '4px' }}>
           Battle Log
         </div>
+        {teamResponse?.metadata && (
+          <div style={{ color: '#aaa', fontSize: '10px', marginBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>
+            <div>{teamResponse.metadata.mode === 'pvp' ? 'PvP' : 'PvB'} Replay</div>
+            {teamResponse.metadata.checkpointA && <div>A: {teamResponse.metadata.checkpointA}</div>}
+            {teamResponse.metadata.checkpointB && <div>B: {teamResponse.metadata.checkpointB}</div>}
+          </div>
+        )}
         {battleLog.length === 0 && (
           <div style={{ color: '#888' }}>Waiting for battle...</div>
         )}
