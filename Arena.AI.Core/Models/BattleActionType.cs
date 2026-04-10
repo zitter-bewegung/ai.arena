@@ -5,6 +5,7 @@ public enum BattleActionType
     Appears,
     Moves,
     Attacks,
-    LoosesHealth,
-    Dies
+    LosesHealth,
+    Dies,
+    SkipsTurn
 }

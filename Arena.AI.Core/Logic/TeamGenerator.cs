@@ -38,4 +38,11 @@ public class Team
     public Unit[] Units { get; init; }
     public Unit[] AliveUnits => Units.Where(u => !u.IsDead).ToArray();
     public bool IsAnyoneAlive => Units.Where(u => !u.IsDead).Any();
+
+    public Team DeepCopy()
+        => new ()
+        {
+            Name = this.Name,
+            Units = this.Units.Select(u => u.DeepCopy()).ToArray()
+        };
 }

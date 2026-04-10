@@ -51,34 +51,36 @@ public class RealtimeBattle
     {
         if(action is null || action.ActionType == UserActionType.Skip)
         {
-            return Skip();
+            return Skip(action?.Label);
         }
 
         if(action.ActionType == UserActionType.Move)
         {
-            return Move(action.Destination!);
+            return Move(action.Destination!, action.Label);
         }
 
         if(action.ActionType == UserActionType.Attack)
         {
-            return Attack(action.Target!);
+            return Attack(action.Target!, action.Label);
         }
 
-        Skip();
+        Skip(action.Label);
         return false;
     }
 
-    private bool Skip()
+    private bool Skip(string? label = null)
     {
+        var unit = _battleState.NextUnitInfo.Unit;
+        _actions.Add(BattleActionFactory.Skip(unit, label));
         CalculateNextMovement();
         return true;
     }
 
-    private bool Move(string destination)
+    private bool Move(string destination, string? label = null)
     {
         if(!_battleState.NextUnitInfo.AvailableDestinations.Contains(destination))
         {
-            Skip();
+            Skip(label);
             return false;
         }
 
@@ -87,7 +89,7 @@ public class RealtimeBattle
             var unit = _battleState.NextUnitInfo.Unit;
 
             DistanceCalculator.Move(unit, coord.Item1, coord.Item2);
-            _actions.Add(BattleActionFactory.Move(unit));
+            _actions.Add(BattleActionFactory.Move(unit, label));
 
             var targets = CalculateAvailableTargets(unit);
 
@@ -107,38 +109,38 @@ public class RealtimeBattle
         return false;
     }
 
-    private bool Attack(string target)
+    private bool Attack(string target, string? label = null)
     {
         if(!_battleState.NextUnitInfo.AvailableAttackTarget.Contains(target))
         {
-            Skip();
+            Skip(label);
             return false;
         }
 
         var actor = _battleState.NextUnitInfo.Unit;
         var unitToAttack = (_teamA.AliveUnits.Union(_teamB.AliveUnits)).First(u => u.Name == target);
 
-        _actions.Add(BattleActionFactory.Attack(actor, unitToAttack));
+        _actions.Add(BattleActionFactory.Attack(actor, unitToAttack, label));
 
         var damage = DamageCalculations.CalculateDamage(actor, unitToAttack);
         unitToAttack.Health -= damage;
-        _actions.Add(BattleActionFactory.LooseHealth(unitToAttack, damage));
+        _actions.Add(BattleActionFactory.LooseHealth(unitToAttack, damage, label));
 
         if(unitToAttack.IsDead)
         {
-            _actions.Add(BattleActionFactory.Die(unitToAttack));
+            _actions.Add(BattleActionFactory.Die(unitToAttack, label));
         }
         else if(DistanceCalculator.CanAttackWithoutMoving(unitToAttack, actor))
         {
-            _actions.Add(BattleActionFactory.Attack(unitToAttack, actor));
+            _actions.Add(BattleActionFactory.Attack(unitToAttack, actor, label));
 
             var returnDamage = DamageCalculations.CalculateDamage(unitToAttack, actor) / 2;
             actor.Health -= returnDamage;
-            _actions.Add(BattleActionFactory.LooseHealth(actor, returnDamage));
+            _actions.Add(BattleActionFactory.LooseHealth(actor, returnDamage, label));
 
             if(actor.IsDead)
             {
-                _actions.Add(BattleActionFactory.Die(actor));
+                _actions.Add(BattleActionFactory.Die(actor, label));
             }
         }
 
