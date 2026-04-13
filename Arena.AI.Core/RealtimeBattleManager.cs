@@ -16,6 +16,13 @@ public class RealtimeBattleManager
         _realtimeBattle = new RealtimeBattle();
     }
 
+    public RealtimeBattleManager(IRealtimePlayer playerA, IRealtimePlayer playerB, Team teamA, Team teamB)
+    {
+        _playerA = playerA;
+        _playerB = playerB;
+        _realtimeBattle = new RealtimeBattle(teamA, teamB);
+    }
+
     public async Task PlayBattleAsync()
     {
         while(_realtimeBattle.GetBattleState().Winner is null)

@@ -3,7 +3,8 @@
 public enum PlayerKind
 {
     ExternalPlayer,
-    SimpleBot1
+    SimpleBot1,
+    QLearningBot1,
 }
 
 public static class BotList
@@ -12,4 +13,7 @@ public static class BotList
     {
        [PlayerKind.SimpleBot1] = () => new SimplePlayer1()
     };
+
+    public static void RegisterQLearningBot(Func<IRealtimePlayer> factory)
+        => Factories[PlayerKind.QLearningBot1] = factory;
 }

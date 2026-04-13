@@ -13,6 +13,7 @@ Turn-based tactical arena game where units battle on a 20x20 grid. Supports auto
 npm install              # Install dependencies
 npm run dev              # Dev server at http://localhost:5173
 npm run build            # Production build to dist/
+npm run preview          # Preview the production build locally
 npm run lint             # ESLint on .js/.jsx files
 ```
 
@@ -34,9 +35,9 @@ Run both frontend and backend simultaneously. The Vite dev server proxies `/api`
 ## Architecture
 
 ### Three-Layer Structure
-- **Arena.AI/** — ASP.NET Core Web API. Controllers (`BattleCalculatorController`, `UnitStatsController`) and SignalR hub (`ExternalPlayerHub` at `/play` endpoint) for real-time games.
-- **Arena.AI.Core/** — Standalone class library with all game logic. No external dependencies. Contains models, battle logic, damage calculations, team generation, and bot AI.
-- **src/** — React SPA. Main game component is `Arena.jsx`. Uses Axios for REST, SignalR client for real-time, GSAP for sprite animations, Tailwind CSS for styling.
+- **Arena.AI/** — ASP.NET Core Web API. Controllers (`BattleCalculatorController`, `UnitStatsController`), SignalR hub (`ExternalPlayerHub` at `/play` endpoint), and DuckDB-backed persistence services under `Services/` and `QFolder/`.
+- **Arena.AI.Core/** — Standalone class library with all game logic. No external dependencies. `Models/` holds the domain types (`Unit`, `BattleState`, `UnitType`, etc.); `Logic/` holds battle orchestration (`AutoBattleCalculator`, `MovementDecider`, `DamageCalculations`, `TeamGenerator`, `UnitFactory`) with a nested `BattleLogic/` subfolder; `QStorage/` defines Q-learning records and repository abstractions; `RealtimePlayers/` holds in-process bot implementations.
+- **src/** — React SPA. Main game component is `src/components/Arena.jsx`. Uses Axios for REST, SignalR client for real-time, GSAP for sprite animations, Tailwind CSS for styling.
 
 ### Two Battle Modes
 1. **Auto-Battle:** REST endpoints on `/BattleCalculator` — backend calculates all moves, returns full battle log.
@@ -56,11 +57,18 @@ Setup → Waiting for Player Input → Action Applied → Check Win Condition �
 ### Concurrency
 `ActiveBattlesManager` uses `ConcurrentDictionary` to manage active battles and lobby state. Each `RealtimeBattle` instance handles one game session.
 
+### Bots
+In-process bot implementations live in `Arena.AI.Core/RealtimePlayers/` (e.g. `SimplePlayer1`) and are registered via `BotList.cs`, which is the entry point for adding a new bot usable in realtime battles.
+
+### Q-Learning Infrastructure
+- `Arena.AI.Core/QStorage/` — Q-learning domain model: `QRecord`, `QStateAction`, `QRecordManager`, and the `IQRepository` / `IQRecordsExtractor` abstractions.
+- `Arena.AI/QFolder/` — DuckDB-backed implementation: `DuckDbRepository`, `QBattleResultBuffer`, and `QBattleResultsFlushService` buffer Q-records and flush them asynchronously. This mirrors the battle-result persistence pattern in `Services/`.
+
 ### API Conventions
 - JSON property naming uses kebab-case (`battle-id`, `unit-type-A`)
 - Swagger UI at `http://localhost:5222/swagger` in Development mode (or `https://localhost:7065/swagger` with `--launch-profile https`)
 - SignalR client methods: `Joined`, `PendingMovement`, `GameEnd`
 - SignalR server methods: `Join`, `Act`
 
-### No Persistence
-All state is in-memory. No database, no authentication.
+### Persistence
+Active battle and lobby state is in-memory via `ActiveBattlesManager`. Battle results are buffered and asynchronously flushed to DuckDB by `BattleResultBuffer` + `BattleResultsFlushService` (see `Arena.AI/Services/DuckDbBattleRepository.cs`); Q-learning records follow the same pattern in `Arena.AI/QFolder/`. No authentication.

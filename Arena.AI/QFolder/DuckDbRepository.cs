@@ -39,8 +39,26 @@ public class DuckDbRepository : IQRepository<MinimalQStateAction>
                 reward                 DOUBLE NOT NULL
             );
             """);
+
+        await connection.ExecuteAsync(
+            """
+            CREATE TABLE IF NOT EXISTS minimal_model_stage (
+                actor_unit_type        INTEGER NOT NULL,
+                actor_health_level     INTEGER NOT NULL,
+                number_of_teammates    TINYINT NOT NULL,
+                number_of_enemies      TINYINT NOT NULL,
+                distance_to_weakest    INTEGER NOT NULL,
+                health_of_weakest      INTEGER NOT NULL,
+                distance_to_closest    INTEGER NOT NULL,
+                health_of_closest      INTEGER NOT NULL,
+                distance_average       INTEGER NOT NULL,
+                action                 INTEGER NOT NULL,
+                reward                 DOUBLE NOT NULL
+            );
+            """);
+
         await connection.CloseAsync();
-    } 
+    }
 
     public async Task<double> GetRewardAsync(MinimalQStateAction record)
     {
@@ -48,7 +66,7 @@ public class DuckDbRepository : IQRepository<MinimalQStateAction>
         await connection.OpenAsync();
 
         var result = await connection.QuerySingleOrDefaultAsync<double>(
-            $@"""
+            $"""
             SELECT reward
             FROM minimal_model
             WHERE actor_unit_type = {(int)record.ActorUnitType}
@@ -60,7 +78,7 @@ public class DuckDbRepository : IQRepository<MinimalQStateAction>
               AND distance_to_closest = {(int)record.DistanceToClosest}
               AND health_of_closest = {(int)record.HealthOfClosest}
               AND distance_average = {(int)record.DistanceAverage}
-              AND action = {(record.Action)};
+              AND action = {(int)record.Action!.Value};
             """);
 
         await connection.CloseAsync();
@@ -146,8 +164,7 @@ public class DuckDbRepository : IQRepository<MinimalQStateAction>
 
             WHEN MATCHED THEN
                 UPDATE SET
-                    reward = (1 - {alpha.ToString(CultureInfo.InvariantCulture)}) * t.reward + {alpha.ToString(CultureInfo.InvariantCulture)} * s.reward,
-
+                    reward = (1 - {alpha.ToString(CultureInfo.InvariantCulture)}) * t.reward + {alpha.ToString(CultureInfo.InvariantCulture)} * s.reward
             WHEN NOT MATCHED THEN
                 INSERT (
                     actor_unit_type,

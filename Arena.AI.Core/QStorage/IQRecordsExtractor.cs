@@ -6,17 +6,8 @@ namespace Arena.AI.Core.QStorage;
 public interface IQRecordsExtractor<TQStateAction> where TQStateAction : QStateAction
 {
     IEnumerable<QRecord<TQStateAction>> ExtractRecords(BattleResult battleResult);
-    IEnumerable<QRecord<TQStateAction>> ExtractRecords(IEnumerable<BattleResult> battleResults) 
-        => battleResults
-        .SelectMany(ExtractRecords)
-        .GroupBy(x => x.StateAction)
-        .Select(g => new QRecord<TQStateAction>
-        {
-            StateAction = g.Key,
-            NumberOfKills = g.Sum(x => x.NumberOfKills),
-            NumberOfGames = g.Sum(x => x.NumberOfGames)
-        })
-        .ToArray();
+    IEnumerable<QRecord<TQStateAction>> ExtractRecords(IEnumerable<BattleResult> battleResults)
+        => battleResults.SelectMany(ExtractRecords);
 
     TQStateAction ExtractState(BattleState battleState);
 }

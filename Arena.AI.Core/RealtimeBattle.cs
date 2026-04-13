@@ -18,13 +18,19 @@ public class RealtimeBattle
     public RealtimeBattle()
     {
         Id = Guid.NewGuid().ToString();
-        Init();
+        Init(TeamGenerator.GenerateRandomTeam("TeamA"), TeamGenerator.GenerateRandomTeam("TeamB"));
     }
 
-    private void Init()
+    public RealtimeBattle(Team teamA, Team teamB)
     {
-        _teamA = TeamGenerator.GenerateRandomTeam("TeamA");
-        _teamB = TeamGenerator.GenerateRandomTeam("TeamB");
+        Id = Guid.NewGuid().ToString();
+        Init(teamA, teamB);
+    }
+
+    private void Init(Team teamA, Team teamB)
+    {
+        _teamA = teamA;
+        _teamB = teamB;
 
         _actions.AddRange(UnitPlacer.PlaceUnits(_teamA, Side.Left));
         _actions.AddRange(UnitPlacer.PlaceUnits(_teamB, Side.Right));
@@ -96,6 +102,7 @@ public class RealtimeBattle
             if(targets.Any())
             {
                 _battleState.NextUnitInfo.AvailableDestinations = [];
+                _battleState.NextUnitInfo.AvailableAttackTarget = targets;
             }
             else
             {

@@ -27,6 +27,8 @@ public class MinimalQRecordExtractor : IQRecordsExtractor<MinimalQStateAction>
         };
     }
 
+    private const double Gamma = 0.95;
+
     public IEnumerable<QRecord<MinimalQStateAction>> ExtractRecords(BattleResult battleResult)
     {
         var historicalStates = battleResult.ExtractHistory();
@@ -36,16 +38,24 @@ public class MinimalQRecordExtractor : IQRecordsExtractor<MinimalQStateAction>
 
         Func<BattleHistory, Team> enemy = h => h.TeamA.Name == myTeamName ? h.TeamB : h.TeamA;
 
-        var finalEnemiesCount = battleResult.Winner == myTeamName ? 0 : enemy(historicalStates.Last()).AliveUnits.Length;
+        // Find kill events: steps where enemy count drops
+        var killSteps = new List<(int index, int killCount)>();
+        for (int j = 1; j < historicalStates.Count; j++)
+        {
+            int prevAlive = enemy(historicalStates[j - 1]).AliveUnits.Length;
+            int currAlive = enemy(historicalStates[j]).AliveUnits.Length;
+            if (currAlive < prevAlive)
+                killSteps.Add((j, prevAlive - currAlive));
+        }
 
         for(var i = 0; i < historicalStates.Count; )
         {
-            if(historicalStates[i].ActorTeam != myTeamName || !string.IsNullOrEmpty(historicalStates[i].ActorAction.Label))
+            if(historicalStates[i].ActorTeam != myTeamName || string.IsNullOrEmpty(historicalStates[i].ActorAction.Label))
             {
                 i++;
                 continue;
             }
-            
+
             var state = ExtractState(new BattleState
             {
                 TeamA = historicalStates[i].TeamA,
@@ -62,11 +72,18 @@ public class MinimalQRecordExtractor : IQRecordsExtractor<MinimalQStateAction>
 
             state.Action = (MinimalQAction)Enum.Parse(typeof(MinimalQAction), currentActionLabel);
 
+            // Discounted reward: immediate kills count more than distant future kills
+            double discountedReward = 0;
+            foreach (var (killIndex, killCount) in killSteps)
+            {
+                if (killIndex > i)
+                    discountedReward += killCount * Math.Pow(Gamma, killIndex - i);
+            }
+
             var record = new QRecord<MinimalQStateAction>
             {
                 StateAction = state,
-                NumberOfKills = enemy(historicalStates[i]).AliveUnits.Length - finalEnemiesCount,
-                NumberOfGames = 1
+                Reward = discountedReward,
             };
 
             result.Add(record);

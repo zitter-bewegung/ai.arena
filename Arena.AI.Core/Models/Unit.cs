@@ -15,7 +15,9 @@ public class Unit: UnitDefinition
             Health = this.Health,
             XPosition = this.XPosition,
             YPosition = this.YPosition,
+            Type = this.Type,
             Attack = this.Attack,
+            Defence = this.Defence,
             Range = this.Range,
             Movement = this.Movement
         };
