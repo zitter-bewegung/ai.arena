@@ -388,3 +388,6 @@ FodyWeavers.xsd
 
 # DuckDB database files
 *.db
+
+runs/*
+evals/*

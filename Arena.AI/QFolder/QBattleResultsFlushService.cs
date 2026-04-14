@@ -1,24 +1,24 @@
 using Arena.AI.Core.QStorage;
-using Arena.AI.Core.QStorage.QRecords.MinimalQRecords;
 
 namespace Arena.AI.QFolder;
 
-public class QBattleResultsFlushService : BackgroundService
+public class QBattleResultsFlushService<TQStateAction> : BackgroundService
+    where TQStateAction : QStateAction
 {
     private static readonly TimeSpan FlushInterval = TimeSpan.FromSeconds(10);
 
     private readonly QBattleResultBuffer _buffer;
-    private readonly QRecordManager<MinimalQStateAction> _manager;
-    private readonly ILogger<QBattleResultsFlushService> _logger;
+    private readonly QRecordManager<TQStateAction> _manager;
+    private readonly ILogger<QBattleResultsFlushService<TQStateAction>> _logger;
 
     public QBattleResultsFlushService(
         QBattleResultBuffer buffer,
-        QRecordManager<MinimalQStateAction> repository,
-        ILogger<QBattleResultsFlushService> logger)
+        QRecordManager<TQStateAction> repository,
+        ILogger<QBattleResultsFlushService<TQStateAction>> logger)
     {
-        _buffer     = buffer;
+        _buffer = buffer;
         _manager = repository;
-        _logger     = logger;
+        _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -61,7 +61,5 @@ public class QBattleResultsFlushService : BackgroundService
 
         _logger.LogInformation("Flush tick: writing {Count} result(s) to DuckDB.", pending.Count);
         await _manager.ProcessBattleResultsAsync(pending);
-
-        return;
     }
 }

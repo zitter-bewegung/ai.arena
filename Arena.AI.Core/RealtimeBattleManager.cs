@@ -23,15 +23,19 @@ public class RealtimeBattleManager
         _realtimeBattle = new RealtimeBattle(teamA, teamB);
     }
 
+    private const int MaxTurns = 1000;
+
     public async Task PlayBattleAsync()
     {
-        while(_realtimeBattle.GetBattleState().Winner is null)
+        int turns = 0;
+        while(_realtimeBattle.GetBattleState().Winner is null && turns < MaxTurns)
         {
             var battleState = _realtimeBattle.GetBattleState();
             var currentPlayer = battleState.NextUnitInfo.TeamName == "TeamA" ? _playerA : _playerB;
             var action = await currentPlayer.ActAsync(battleState);
-            
+
             _realtimeBattle.Play(action);
+            turns++;
         }
 
         await Task.WhenAll(

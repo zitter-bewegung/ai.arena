@@ -1,20 +1,20 @@
+using Arena.AI.Core;
 using Arena.AI.Core.Logic;
 using Arena.AI.Core.Models;
 using Arena.AI.Core.QStorage;
-using Arena.AI.Core.QStorage.QRecords.MinimalQRecords;
 
-namespace Arena.AI.Core.RealtimePlayers;
+namespace Arena.AI.Trainer.Models.Scout;
 
-public class QLearningBot1 : IRealtimePlayer
+public class Bot : IRealtimePlayer
 {
-    private readonly IQRepository<MinimalQStateAction> _repo;
-    private readonly IQRecordsExtractor<MinimalQStateAction> _extractor;
+    private readonly IQRepository<QStateAction> _repo;
+    private readonly IQRecordsExtractor<QStateAction> _extractor;
     private readonly double _epsilon;
     private readonly Random _rng;
 
-    public QLearningBot1(
-        IQRepository<MinimalQStateAction> repo,
-        IQRecordsExtractor<MinimalQStateAction> extractor,
+    public Bot(
+        IQRepository<QStateAction> repo,
+        IQRecordsExtractor<QStateAction> extractor,
         double epsilon = 0.0,
         Random? rng = null)
     {
@@ -28,18 +28,17 @@ public class QLearningBot1 : IRealtimePlayer
     {
         var baseState = _extractor.ExtractState(battleState);
 
-        MinimalQAction chosen;
+        QAction chosen;
         if (_rng.NextDouble() < _epsilon)
         {
-            var values = Enum.GetValues<MinimalQAction>();
+            var values = Enum.GetValues<QAction>();
             chosen = values[_rng.Next(values.Length)];
         }
         else
         {
-            var best = MinimalQAction.Skips;
+            var best = QAction.Skips;
             var bestQ = double.NegativeInfinity;
-            // Iterating in shuffled order so ties (e.g. all-zero Q-table) break randomly.
-            foreach (var action in Enum.GetValues<MinimalQAction>().OrderBy(_ => _rng.Next()))
+            foreach (var action in Enum.GetValues<QAction>().OrderBy(_ => _rng.Next()))
             {
                 var sa = baseState with { Action = action };
                 var q = await _repo.GetRewardAsync(sa);
@@ -57,26 +56,18 @@ public class QLearningBot1 : IRealtimePlayer
 
     public Task ReportResultAsync(BattleResult result) => Task.CompletedTask;
 
-    // MinimalQAction → concrete UserAction. The Label MUST be `action.ToString()` so the
-    // extractor can round-trip via Enum.Parse(typeof(MinimalQAction), label).
-    private UserAction TranslateToUserAction(MinimalQAction action, BattleState bs)
+    private UserAction TranslateToUserAction(QAction action, BattleState bs)
     {
         var label = action.ToString();
         var actor = bs.NextUnitInfo.Unit;
         var enemyTeam = bs.TeamA.Name == bs.NextUnitInfo.TeamName ? bs.TeamB : bs.TeamA;
         var aliveEnemies = enemyTeam.AliveUnits;
         if (aliveEnemies.Length == 0)
-        {
             return UserAction.Skip(label);
-        }
 
         var availTargets = bs.NextUnitInfo.AvailableAttackTarget;
         var availDests = bs.NextUnitInfo.AvailableDestinations;
 
-        // Post-move follow-up state: RealtimeBattle.Move() re-prompts the same unit
-        // (with empty AvailableDestinations) when it can attack from its new position.
-        // The BattleHistory parser assumes a Move is always followed by an Attack from
-        // the same unit, so we MUST attack here — skipping would corrupt history parsing.
         if (availDests.Count == 0 && availTargets.Count > 0)
         {
             var followUpTarget = aliveEnemies
@@ -88,31 +79,32 @@ public class QLearningBot1 : IRealtimePlayer
 
         switch (action)
         {
-            case MinimalQAction.Skips:
+            case QAction.Skips:
                 return UserAction.Skip(label);
 
-            case MinimalQAction.AttacksClosest:
+            case QAction.AttacksClosest:
                 return AttackOrApproach(Closest(actor, aliveEnemies), label, availTargets, availDests);
 
-            case MinimalQAction.AttacksWeakest:
+            case QAction.AttacksWeakest:
                 return AttackOrApproach(Weakest(actor, aliveEnemies), label, availTargets, availDests);
 
-            case MinimalQAction.AttacksAnother:
+            case QAction.AttacksThreat:
+                return AttackOrApproach(Threat(actor, aliveEnemies), label, availTargets, availDests);
+
+            case QAction.AttacksAnother:
             {
                 var w = Weakest(actor, aliveEnemies);
                 var c = Closest(actor, aliveEnemies);
-                var others = aliveEnemies.Where(u => u.Name != w.Name && u.Name != c.Name).ToArray();
+                var t = Threat(actor, aliveEnemies);
+                var others = aliveEnemies.Where(u => u.Name != w.Name && u.Name != c.Name && u.Name != t.Name).ToArray();
                 var target = others.Length > 0 ? others[_rng.Next(others.Length)] : c;
                 return AttackOrApproach(target, label, availTargets, availDests);
             }
 
-            case MinimalQAction.Retreats:
+            case QAction.Retreats:
             {
                 if (availDests.Count == 0)
-                {
                     return UserAction.Skip(label);
-                }
-                // Pick the destination that maximizes the minimum distance to any alive enemy.
                 var bestDest = availDests
                     .Select(d =>
                     {
@@ -132,33 +124,22 @@ public class QLearningBot1 : IRealtimePlayer
     }
 
     private static Unit Closest(Unit actor, Unit[] enemies)
-        => enemies
-            .OrderBy(u => DistanceCalculator.GetShortestDistanceValue(actor, u))
-            .First();
+        => enemies.OrderBy(u => DistanceCalculator.GetShortestDistanceValue(actor, u)).First();
 
     private static Unit Weakest(Unit actor, Unit[] enemies)
-        => enemies
-            .OrderBy(u => u.Health)
-            .ThenBy(u => DistanceCalculator.GetShortestDistanceValue(actor, u))
-            .First();
+        => enemies.OrderBy(u => u.Health).ThenBy(u => DistanceCalculator.GetShortestDistanceValue(actor, u)).First();
+
+    private static Unit Threat(Unit actor, Unit[] enemies)
+        => enemies.OrderByDescending(u => u.Attack).ThenBy(u => DistanceCalculator.GetShortestDistanceValue(actor, u)).First();
 
     private static UserAction AttackOrApproach(
-        Unit target,
-        string label,
-        List<string> availTargets,
-        List<string> availDests)
+        Unit target, string label, List<string> availTargets, List<string> availDests)
     {
         if (availTargets.Contains(target.Name))
-        {
             return UserAction.Attack(target.Name, label);
-        }
-
         if (availDests.Count == 0)
-        {
             return UserAction.Skip(label);
-        }
 
-        // Move to the available destination closest to the target.
         var best = availDests
             .Select(d =>
             {
@@ -168,7 +149,6 @@ public class QLearningBot1 : IRealtimePlayer
             .OrderBy(x => x.Dist)
             .First()
             .Dest;
-
         return UserAction.Move(best, label);
     }
 }

@@ -1,11 +1,14 @@
-﻿using Arena.AI.Core.Logic;
+using Arena.AI.Core.Logic;
 using Arena.AI.Core.Models;
+using Arena.AI.Core.QStorage;
 
-namespace Arena.AI.Core.QStorage.QRecords.MinimalQRecords;
+namespace Arena.AI.Trainer.Models.Dwarf;
 
-public class MinimalQRecordExtractor : IQRecordsExtractor<MinimalQStateAction>
+public class RecordExtractor : IQRecordsExtractor<QStateAction>
 {
-    public MinimalQStateAction ExtractState(BattleState battleState)
+    private const double Gamma = 0.95;
+
+    public QStateAction ExtractState(BattleState battleState)
     {
         var nextUnitInfo = battleState.NextUnitInfo;
         var actorTeam = battleState.TeamA.Name == nextUnitInfo.TeamName ? battleState.TeamA : battleState.TeamB;
@@ -13,7 +16,7 @@ public class MinimalQRecordExtractor : IQRecordsExtractor<MinimalQStateAction>
 
         var enemiesData = CalculateEnemies(nextUnitInfo.Unit, enemyTeam);
 
-        return new MinimalQStateAction
+        return new QStateAction
         {
             ActorUnitType = nextUnitInfo.Unit.Type,
             ActorHealthLevel = GetUnitHealthLevel(nextUnitInfo.Unit.Health),
@@ -27,18 +30,14 @@ public class MinimalQRecordExtractor : IQRecordsExtractor<MinimalQStateAction>
         };
     }
 
-    private const double Gamma = 0.95;
-
-    public IEnumerable<QRecord<MinimalQStateAction>> ExtractRecords(BattleResult battleResult)
+    public IEnumerable<QRecord<QStateAction>> ExtractRecords(BattleResult battleResult)
     {
         var historicalStates = battleResult.ExtractHistory();
-
-        var result = new List<QRecord<MinimalQStateAction>>(historicalStates.Count);
+        var result = new List<QRecord<QStateAction>>(historicalStates.Count);
         var myTeamName = historicalStates.First(h => !string.IsNullOrWhiteSpace(h.ActorAction.Label)).ActorTeam.Split("_")[0];
 
         Func<BattleHistory, Team> enemy = h => h.TeamA.Name == myTeamName ? h.TeamB : h.TeamA;
 
-        // Find kill events: steps where enemy count drops
         var killSteps = new List<(int index, int killCount)>();
         for (int j = 1; j < historicalStates.Count; j++)
         {
@@ -48,9 +47,9 @@ public class MinimalQRecordExtractor : IQRecordsExtractor<MinimalQStateAction>
                 killSteps.Add((j, prevAlive - currAlive));
         }
 
-        for(var i = 0; i < historicalStates.Count; )
+        for (var i = 0; i < historicalStates.Count;)
         {
-            if(historicalStates[i].ActorTeam != myTeamName || string.IsNullOrEmpty(historicalStates[i].ActorAction.Label))
+            if (historicalStates[i].ActorTeam != myTeamName || string.IsNullOrEmpty(historicalStates[i].ActorAction.Label))
             {
                 i++;
                 continue;
@@ -69,10 +68,8 @@ public class MinimalQRecordExtractor : IQRecordsExtractor<MinimalQStateAction>
 
             var currentActionLabel = historicalStates[i].ActorAction.Label;
             var currentActorName = historicalStates[i].Actor.Name;
+            state.Action = (QAction)Enum.Parse(typeof(QAction), currentActionLabel);
 
-            state.Action = (MinimalQAction)Enum.Parse(typeof(MinimalQAction), currentActionLabel);
-
-            // Discounted reward: immediate kills count more than distant future kills
             double discountedReward = 0;
             foreach (var (killIndex, killCount) in killSteps)
             {
@@ -80,20 +77,15 @@ public class MinimalQRecordExtractor : IQRecordsExtractor<MinimalQStateAction>
                     discountedReward += killCount * Math.Pow(Gamma, killIndex - i);
             }
 
-            var record = new QRecord<MinimalQStateAction>
+            result.Add(new QRecord<QStateAction>
             {
                 StateAction = state,
                 Reward = discountedReward,
-            };
-
-            result.Add(record);
+            });
 
             i++;
-
             while (i < historicalStates.Count && historicalStates[i].Actor.Name == currentActorName && historicalStates[i].ActorAction.Label == currentActionLabel)
-            {
                 i++;
-            }
         }
 
         return result;
@@ -101,58 +93,32 @@ public class MinimalQRecordExtractor : IQRecordsExtractor<MinimalQStateAction>
 
     private static UnitHealthLevel GetUnitHealthLevel(int health)
     {
-        if (health > 6)
-        {
-            return UnitHealthLevel.High;
-        }
-
-        if (health > 3)
-        {
-            return UnitHealthLevel.Medium;
-        }
-
+        if (health > 6) return UnitHealthLevel.High;
+        if (health > 3) return UnitHealthLevel.Medium;
         return UnitHealthLevel.Low;
     }
 
     private static EnemyCalculations CalculateEnemies(Unit actor, Team enemy)
     {
-        var enemiesDistances = enemy.AliveUnits
+        var distances = enemy.AliveUnits
             .ToDictionary(u => u.Name, u => DistanceCalculator.GetShortestDistanceValue(actor, u));
-
-        var weakest = enemy.AliveUnits
-            .OrderBy(u => u.Health)
-            .ThenBy(u => enemiesDistances[u.Name])
-            .First();
-
-        var closest = enemy.AliveUnits
-            .OrderBy(u => enemiesDistances[u.Name])
-            .First();
+        var weakest = enemy.AliveUnits.OrderBy(u => u.Health).ThenBy(u => distances[u.Name]).First();
+        var closest = enemy.AliveUnits.OrderBy(u => distances[u.Name]).First();
 
         return new EnemyCalculations
         {
-            DistanceToWeakest = GetDistanceLevel(actor, enemiesDistances[weakest.Name]),
+            DistanceToWeakest = GetDistanceLevel(actor, distances[weakest.Name]),
             HealthOfWeakest = GetUnitHealthLevel(weakest.Health),
-            DistanceToClosest = GetDistanceLevel(actor, enemiesDistances[closest.Name]),
+            DistanceToClosest = GetDistanceLevel(actor, distances[closest.Name]),
             HealthOfClosest = GetUnitHealthLevel(closest.Health),
-            DistanceAverage = GetDistanceLevel(actor, enemiesDistances.Values.Average())
+            DistanceAverage = GetDistanceLevel(actor, distances.Values.Average())
         };
     }
 
     private static DistanceLevel GetDistanceLevel(Unit actor, double distance)
     {
-        var normalizedDistance = distance / (actor.Movement + actor.Range);
-        var normalizedAttackDistance = distance / (actor.Range);
-
-        if(normalizedAttackDistance < 1)
-        {
-            return DistanceLevel.AttackRange;
-        }
-
-        if (normalizedDistance < 1)
-        {
-            return DistanceLevel.MoveAndAttackRange;
-        }
-
+        if (distance / actor.Range < 1) return DistanceLevel.AttackRange;
+        if (distance / (actor.Movement + actor.Range) < 1) return DistanceLevel.MoveAndAttackRange;
         return DistanceLevel.CannotAttack;
     }
 
@@ -165,4 +131,3 @@ public class MinimalQRecordExtractor : IQRecordsExtractor<MinimalQStateAction>
         public DistanceLevel DistanceAverage { get; set; }
     }
 }
-

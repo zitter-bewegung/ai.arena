@@ -1,10 +1,11 @@
-﻿using Arena.AI.Core.Models;
+using Arena.AI.Core.Models;
+using CoreQStateAction = Arena.AI.Core.QStorage.QStateAction;
 
-namespace Arena.AI.Core.QStorage.QRecords.MinimalQRecords;
+namespace Arena.AI.Trainer.Models.Dwarf;
 
-public record MinimalQStateAction: QStateAction
+public record QStateAction : CoreQStateAction
 {
-    //State
+    // State
     public UnitType ActorUnitType { get; set; }
     public UnitHealthLevel ActorHealthLevel { get; set; }
     public byte NumberOfTeammates { get; set; }
@@ -15,11 +16,11 @@ public record MinimalQStateAction: QStateAction
     public UnitHealthLevel HealthOfClosest { get; set; }
     public DistanceLevel DistanceAverage { get; set; }
 
-    //Action
-    public MinimalQAction? Action { get; set; }
+    // Action
+    public QAction? Action { get; set; }
 }
 
-public enum MinimalQAction
+public enum QAction
 {
     Skips,
     AttacksWeakest,
@@ -37,7 +38,7 @@ public enum UnitHealthLevel
 
 public enum DistanceLevel
 {
-    AttackRange,  // less than 0.67 attack range
-    MoveAndAttackRange, // between 0.67 and 1 attack range
-    CannotAttack     // more than 1 attack range
+    AttackRange,
+    MoveAndAttackRange,
+    CannotAttack
 }
