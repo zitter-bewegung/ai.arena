@@ -84,20 +84,20 @@ public class DuckDbQRepository<TQStateAction> : IQRepository<TQStateAction>, IAs
 
         _connection.Execute($"INSERT INTO {_options.StageTableName} ({stageColumns}) VALUES {values};");
 
-        var mergeOn = string.Join(" AND ",
+        var joinOn = string.Join(" AND ",
             _schema.KeyColumnsCsv.Split(',').Select(c => $"t.{c.Trim()} = s.{c.Trim()}"));
 
-        var rewardUpdate = _options.UseWeightedAlpha
-            ? "reward = (1 - s.effective_alpha) * t.reward + s.effective_alpha * s.reward"
-            : $"reward = (1 - {alpha}) * t.reward + {alpha} * s.reward";
+        var rewardExpr = _options.UseWeightedAlpha
+            ? "(1 - s.effective_alpha) * t.reward + s.effective_alpha * s.reward"
+            : $"(1 - {alpha}) * t.reward + {alpha} * s.reward";
 
-        await _connection.ExecuteAsync($"""
-            MERGE INTO {_options.TableName} t
-            USING {_options.StageTableName} s
-            ON {mergeOn}
-            WHEN MATCHED THEN UPDATE SET {rewardUpdate}
-            WHEN NOT MATCHED THEN INSERT ({_schema.AllColumnsCsv}) VALUES ({string.Join(", ", _schema.AllColumnsCsv.Split(',').Select(c => $"s.{c.Trim()}"))});
-            """);
+        await _connection.ExecuteAsync(
+            $"UPDATE {_options.TableName} t SET reward = {rewardExpr} FROM {_options.StageTableName} s WHERE {joinOn};");
+
+        var insertCols = _schema.AllColumnsCsv;
+        var selectCols = string.Join(", ", insertCols.Split(',').Select(c => $"s.{c.Trim()}"));
+        await _connection.ExecuteAsync(
+            $"INSERT INTO {_options.TableName} ({insertCols}) SELECT {selectCols} FROM {_options.StageTableName} s WHERE NOT EXISTS (SELECT 1 FROM {_options.TableName} t WHERE {joinOn});");
 
         await _connection.ExecuteAsync($"TRUNCATE TABLE {_options.StageTableName}");
 

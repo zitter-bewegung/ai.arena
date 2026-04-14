@@ -8,10 +8,7 @@ namespace Arena.AI.Trainer.Models.Scout;
 public class RecordExtractor : IQRecordsExtractor<QStateAction>
 {
     private const double Gamma = 0.95;
-    private const double CenterX = (Constants.ArenaWidth + 1) / 2.0;
-    private const double CenterY = (Constants.ArenaHeight + 1) / 2.0;
-    private const double CenterRadius = 3.5;
-    private const double MidfieldRadius = 7.0;
+    private const int EdgeThreshold = 2;
 
     public QStateAction ExtractState(BattleState battleState)
     {
@@ -33,10 +30,9 @@ public class RecordExtractor : IQRecordsExtractor<QStateAction>
             DistanceToClosest = enemiesData.DistanceToClosest,
             HealthOfClosest = enemiesData.HealthOfClosest,
             DistanceAverage = enemiesData.DistanceAverage,
-            Zone = GetZone(actor),
-            DistanceFromCenter = GetCenterDistance(actor),
-            AlliesNearby = CountAlliesNearby(actor, actorTeam),
-            EnemyThreat = CountEnemyThreat(actor, enemyTeam),
+            Threatened = IsThreatened(actor, enemyTeam),
+            Supported = IsSupported(actor, actorTeam),
+            AtEdge = IsAtEdge(actor),
         };
     }
 
@@ -132,63 +128,32 @@ public class RecordExtractor : IQRecordsExtractor<QStateAction>
         return DistanceLevel.CannotAttack;
     }
 
-    private static ActorZone GetZone(Unit actor)
+    private static bool IsThreatened(Unit actor, Team enemyTeam)
     {
-        bool leftHalf = actor.XPosition <= Constants.ArenaWidth / 2;
-        bool topHalf = actor.YPosition <= Constants.ArenaHeight / 2;
-        return (leftHalf, topHalf) switch
-        {
-            (true, true) => ActorZone.TopLeft,
-            (false, true) => ActorZone.TopRight,
-            (true, false) => ActorZone.BottomLeft,
-            (false, false) => ActorZone.BottomRight,
-        };
-    }
-
-    private static CenterDistance GetCenterDistance(Unit actor)
-    {
-        var dx = actor.XPosition - CenterX;
-        var dy = actor.YPosition - CenterY;
-        var dist = Math.Sqrt(dx * dx + dy * dy);
-        if (dist < CenterRadius) return CenterDistance.Center;
-        if (dist < MidfieldRadius) return CenterDistance.MidField;
-        return CenterDistance.Edge;
-    }
-
-    private static NearbyCount CountAlliesNearby(Unit actor, Team actorTeam)
-    {
-        int count = 0;
-        foreach (var ally in actorTeam.AliveUnits)
-        {
-            if (ally.Name == actor.Name) continue;
-            if (DistanceCalculator.GetShortestDistanceValue(actor, ally) <= actor.Movement)
-                count++;
-            if (count >= 2) return NearbyCount.Multiple;
-        }
-        return count switch
-        {
-            0 => NearbyCount.Alone,
-            1 => NearbyCount.One,
-            _ => NearbyCount.Multiple,
-        };
-    }
-
-    private static ThreatLevel CountEnemyThreat(Unit actor, Team enemyTeam)
-    {
-        int count = 0;
         foreach (var foe in enemyTeam.AliveUnits)
         {
             if (DistanceCalculator.GetShortestDistanceValue(actor, foe) <= (foe.Movement + foe.Range))
-                count++;
-            if (count >= 2) return ThreatLevel.Multiple;
+                return true;
         }
-        return count switch
-        {
-            0 => ThreatLevel.None,
-            1 => ThreatLevel.One,
-            _ => ThreatLevel.Multiple,
-        };
+        return false;
     }
+
+    private static bool IsSupported(Unit actor, Team actorTeam)
+    {
+        foreach (var ally in actorTeam.AliveUnits)
+        {
+            if (ally.Name != actor.Name &&
+                DistanceCalculator.GetShortestDistanceValue(actor, ally) <= actor.Movement)
+                return true;
+        }
+        return false;
+    }
+
+    private static bool IsAtEdge(Unit actor) =>
+        actor.XPosition <= EdgeThreshold ||
+        actor.XPosition > Constants.ArenaWidth - EdgeThreshold ||
+        actor.YPosition <= EdgeThreshold ||
+        actor.YPosition > Constants.ArenaHeight - EdgeThreshold;
 
     private class EnemyCalculations
     {

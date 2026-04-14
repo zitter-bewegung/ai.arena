@@ -391,3 +391,4 @@ FodyWeavers.xsd
 
 runs/*
 evals/*
+game_logs/*

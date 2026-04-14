@@ -3,7 +3,7 @@ namespace Arena.AI.Trainer.Training;
 public record TrainingConfig
 {
     public int Episodes { get; init; } = 2000;
-    public double StartEpsilon { get; init; } = 0.3;
+    public double StartEpsilon { get; init; } = 0.8;
     public double FinalEpsilon { get; init; } = 0.05;
     public bool NoLearn { get; init; }
     public double CurriculumFraction { get; init; } = 1.0;

@@ -184,8 +184,13 @@ public static class TrainingLoop
     }
 
     private static double ComputeEpsilon(TrainingConfig config, int ep)
-        => config.StartEpsilon + (config.FinalEpsilon - config.StartEpsilon)
-            * ((double)(ep - 1) / Math.Max(1, config.Episodes - 1));
+    {
+        var t = (double)(ep - 1) / Math.Max(1, config.Episodes - 1);
+        // Exponential decay: spend more time exploring early, then transition sharply to exploitation.
+        // decay factor 5 means ~99% of the drop happens by ~60% of training.
+        return config.FinalEpsilon
+            + (config.StartEpsilon - config.FinalEpsilon) * Math.Exp(-5.0 * t);
+    }
 
     private static double ComputeSimpleProp(TrainingConfig config, int curriculumEpisodes, int ep)
         => config.StartSimpleProp + (config.FinalSimpleProp - config.StartSimpleProp)

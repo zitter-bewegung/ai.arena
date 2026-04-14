@@ -108,7 +108,7 @@ public class ModelProfile : IModelProfile
     public async Task UpdateSnapshotAsync()
     {
         await _writeRepo.CopyTableAsync("q_table", "q_table_snapshot");
-        InvalidateCaches();
+        foreach (var c in _snapshotPool) c.Invalidate();
     }
 
     public void InvalidateCaches()

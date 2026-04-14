@@ -17,10 +17,9 @@ public record QStateAction : CoreQStateAction
     public DistanceLevel DistanceAverage { get; set; }
 
     // Spatial features (new in Scout)
-    public ActorZone Zone { get; set; }
-    public CenterDistance DistanceFromCenter { get; set; }
-    public NearbyCount AlliesNearby { get; set; }
-    public ThreatLevel EnemyThreat { get; set; }
+    public bool Threatened { get; set; }
+    public bool Supported { get; set; }
+    public bool AtEdge { get; set; }
 
     // Action
     public QAction? Action { get; set; }
@@ -48,33 +47,4 @@ public enum DistanceLevel
     AttackRange,
     MoveAndAttackRange,
     CannotAttack
-}
-
-public enum ActorZone
-{
-    TopLeft,
-    TopRight,
-    BottomLeft,
-    BottomRight
-}
-
-public enum CenterDistance
-{
-    Center,
-    MidField,
-    Edge
-}
-
-public enum NearbyCount
-{
-    Alone,
-    One,
-    Multiple
-}
-
-public enum ThreatLevel
-{
-    None,
-    One,
-    Multiple
 }
