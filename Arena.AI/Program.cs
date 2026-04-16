@@ -26,7 +26,8 @@ builder.Services
     .AddSingleton<IQRecordsExtractor<MinimalQStateAction>, MinimalQRecordExtractor>()
     .AddSingleton<QRecordManager<MinimalQStateAction>>()
     .AddSingleton<QBattleResultBuffer>()
-    .AddHostedService<QBattleResultsFlushService>();
+    //.AddHostedService<QBattleResultsFlushService>()
+    ;
 
 var app = builder.Build();
 
