@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../ai.arena.client"
+		},
+		{
+			"path": "../ai_arena_agents"
+		}
+	],
+	"settings": {}
+}
