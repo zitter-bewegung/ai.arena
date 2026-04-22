@@ -17,6 +17,24 @@ public static class TeamGenerator
         };
     }
 
+    public static Team GenerateSemiRandomTeam(string name, UnitType unitType)
+    {
+        var units = new List<Unit>();
+        units.AddRange(Enumerable.Range(1, Constants.MaxNumberOfUnits)
+                .Select(x => UnitFactory.GetUnit(unitType, GetUnitName(name, x)))
+                .ToArray());
+
+        units.AddRange(Enumerable.Range(4, Constants.MaxNumberOfUnits)
+                .Select(x => UnitFactory.GetUnit((UnitType)rnd.Next(5), GetUnitName(name, x)))
+                .ToArray());
+
+        return new Team
+        {
+            Name = name,
+            Units = units.OrderBy(x => rnd.Next()).ToArray()
+        };
+    }
+
     public static Team GenerateRandomTeam(string name)
     {
         return new Team

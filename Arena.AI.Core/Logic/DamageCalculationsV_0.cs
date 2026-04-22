@@ -4,7 +4,7 @@ namespace Arena.AI.Core.Logic;
 
 public static class DamageCalculationsV0
 {
-    private static double BaseDamage = Constants.UnitMaxHealth / 2.5;
+    private static double BaseDamage = Constants.UnitMaxHealth / 3.5;
     private static int StatFactor = 50;
     private static double RandomModifier = 0.1;
     private static Random rnd = new Random();
