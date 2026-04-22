@@ -258,7 +258,7 @@ const Arena = () => {
 
     const playableMinX = 1;
     const playableMinY = 0;
-    const playableMaxX = cols - 1;
+    const playableMaxX = cols;
     const playableMaxY = rows - 1;
 
     const playableCols = playableMaxX - playableMinX;
@@ -275,15 +275,13 @@ const Arena = () => {
       return `${letter}${number}`;
     };
 
-    const riverCol = playableMinX + Math.floor(playableCols / 2);
-    const riverRow = playableMinY + Math.floor(playableRows / 2);
+    const centerCol = playableMinX + Math.floor(playableCols / 2);
 
     const isOutOfBounds = (x, y) =>
       x < playableMinX || x >= playableMaxX || y < playableMinY || y >= playableMaxY;
-    const isRiver = (x, y) => x === riverCol || y === riverRow;
 
-    const inTeamAZone = (x) => x < riverCol;
-    const inTeamBZone = (x) => x > riverCol;
+    const inTeamAZone = (x) => x < centerCol;
+    const inTeamBZone = (x) => x >= centerCol;
 
     const desiredPerTeam = Math.max(1, unitsPerTeam);
 
@@ -338,7 +336,6 @@ const Arena = () => {
           const cy = y + dy;
 
           if (isOutOfBounds(cx, cy)) return false;
-          if (isRiver(cx, cy)) return false;
           if (team === "A" && !inTeamAZone(cx)) return false;
           if (team === "B" && !inTeamBZone(cx)) return false;
           if (occupied.has(keyOf(cx, cy))) return false;
@@ -384,8 +381,8 @@ const Arena = () => {
         if (maxX < minX || maxY < minY) return null;
 
         let x = randomInt(minX, maxX);
-        if (team === "A") x = randomInt(minX, Math.min(maxX, riverCol - 1));
-        if (team === "B") x = randomInt(Math.max(minX, riverCol + 1), maxX);
+        if (team === "A") x = randomInt(minX, Math.min(maxX, centerCol - 1));
+        if (team === "B") x = randomInt(Math.max(minX, centerCol), maxX);
 
         const y = randomInt(minY, maxY);
 
@@ -502,15 +499,11 @@ const Arena = () => {
 
     const playableMinX = 1;
     const playableMinY = 0;
-    const playableMaxX = cols - 1;
+    const playableMaxX = cols;
     const playableMaxY = rows - 1;
 
     const playableCols = playableMaxX - playableMinX;
     const playableRows = playableMaxY - playableMinY;
-
-    const riverCol = playableMinX + Math.floor(playableCols / 2);
-    const riverRow = playableMinY + Math.floor(playableRows / 2);
-    const isRiver = (x, y) => x === riverCol || y === riverRow;
 
     const cellToCoord = (x, y) => {
       const colIndex = x - playableMinX;
