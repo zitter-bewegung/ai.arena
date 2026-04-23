@@ -26,6 +26,11 @@ public class RealtimeBattleManager
             
             _realtimeBattle.Play(action);
         }
+
+        await Task.WhenAll(
+            _playerA.ReportResultAsync(GetBattleResult()),
+            _playerB.ReportResultAsync(GetBattleResult())
+            );
     }
 
     public string BattleId => _realtimeBattle.Id;

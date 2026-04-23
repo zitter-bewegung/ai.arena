@@ -1,4 +1,5 @@
 ﻿using Arena.AI.Core;
+using Arena.AI.Core.Logic;
 using Arena.AI.Core.Models;
 using Microsoft.AspNetCore.SignalR;
 
@@ -19,7 +20,13 @@ public class ExternalRealtimePlayer : IRealtimePlayer
 
     public async Task<UserAction> ActAsync(BattleState battleState)
     {
+        var actionTask = ExternalPlayerHub.WaitForAction(_connectionId);
         await _hub.Clients.Client(_connectionId).PendingMovement(battleState);
-        return await _hub.Clients.Client(_connectionId).Act();
+        
+        var result = await actionTask;
+        return result;
     }
+
+    public async Task ReportResultAsync(BattleResult result)
+        => await _hub.Clients.Client(_connectionId).GameEnd(result);
 }

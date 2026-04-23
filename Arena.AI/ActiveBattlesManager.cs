@@ -102,7 +102,7 @@ public static class ActiveBattlesManager
 
     public static bool JoinAsPlayerA(string inviteId, string passPhrase)
     {
-        if (Lobby.TryGetValue(inviteId, out var battleInfo) && battleInfo.PlayerA.IsExternal && battleInfo.PlayerA.PassPhrase != null)
+        if (Lobby.TryGetValue(inviteId, out var battleInfo) && battleInfo.PlayerA.IsExternal && battleInfo.PlayerA.PassPhrase == null)
         {
             battleInfo.PlayerA.PassPhrase = passPhrase;
             return true;
@@ -113,7 +113,7 @@ public static class ActiveBattlesManager
 
     public static bool JoinAsPlayerB(string inviteId, string passPhrase)
     {
-        if(Lobby.TryGetValue(inviteId, out var battleInfo) && battleInfo.PlayerB.IsExternal && battleInfo.PlayerB.PassPhrase != null)
+        if(Lobby.TryGetValue(inviteId, out var battleInfo) && battleInfo.PlayerB.IsExternal && battleInfo.PlayerB.PassPhrase == null)
         {
             battleInfo.PlayerB.PassPhrase = passPhrase;
             return true;

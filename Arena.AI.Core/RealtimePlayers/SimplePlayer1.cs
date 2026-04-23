@@ -80,4 +80,6 @@ public class SimplePlayer1 : IRealtimePlayer
         
         return Task.FromResult(UserAction.Skip());
     }
+
+    public Task ReportResultAsync(BattleResult result) => Task.CompletedTask;
 }

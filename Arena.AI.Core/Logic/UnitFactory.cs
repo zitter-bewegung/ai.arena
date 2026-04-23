@@ -27,10 +27,10 @@ public static class UnitFactory
 
     private static Dictionary<UnitType, UnitDefinition> _unitStats = new()
     {
-        [UnitType.Light] = new UnitDefinition { Type = UnitType.Light, Attack = 10, Defence = 10, Range = 1, Movement = 10 },
-        [UnitType.Heavy] = new UnitDefinition { Type = UnitType.Heavy, Attack = 15, Defence = 25, Range = 1, Movement = 6 },
-        [UnitType.Fast] = new UnitDefinition { Type = UnitType.Fast, Attack = 10, Defence = 10, Range = 1, Movement = 18 },
-        [UnitType.ShortRange] = new UnitDefinition { Type = UnitType.ShortRange, Attack = 10, Defence = 5, Range = 10, Movement = 8 },
-        [UnitType.LongRange] = new UnitDefinition { Type = UnitType.LongRange, Attack = 4, Defence = 4, Range = 19, Movement = 4 },
+        [UnitType.Light] = new UnitDefinition { Type = UnitType.Light, Attack = 4, Defence = 4, Range = 1, Movement = 13 },
+        [UnitType.Heavy] = new UnitDefinition { Type = UnitType.Heavy, Attack = 4, Defence = 5, Range = 1, Movement = 5 },
+        [UnitType.Fast] = new UnitDefinition { Type = UnitType.Fast, Attack = 5, Defence = 3, Range = 1, Movement = 15 },
+        [UnitType.ShortRange] = new UnitDefinition { Type = UnitType.ShortRange, Attack = 4, Defence = 3, Range = 3, Movement = 6 },
+        [UnitType.LongRange] = new UnitDefinition { Type = UnitType.LongRange, Attack = 4, Defence = 2, Range = 6, Movement = 3 },
     };
 }
