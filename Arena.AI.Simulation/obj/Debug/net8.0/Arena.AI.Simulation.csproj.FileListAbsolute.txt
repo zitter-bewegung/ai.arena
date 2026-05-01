@@ -1,0 +1,36 @@
+C:\Users\vovaf\OneDrive\Рабочий стол\Лабки\Лабки 4 курс 2 семестр\ai.arena-master\Arena.AI.Simulation\bin\Debug\net8.0\Arena.AI.Simulation.exe
+C:\Users\vovaf\OneDrive\Рабочий стол\Лабки\Лабки 4 курс 2 семестр\ai.arena-master\Arena.AI.Simulation\bin\Debug\net8.0\Arena.AI.Simulation.deps.json
+C:\Users\vovaf\OneDrive\Рабочий стол\Лабки\Лабки 4 курс 2 семестр\ai.arena-master\Arena.AI.Simulation\bin\Debug\net8.0\Arena.AI.Simulation.runtimeconfig.json
+C:\Users\vovaf\OneDrive\Рабочий стол\Лабки\Лабки 4 курс 2 семестр\ai.arena-master\Arena.AI.Simulation\bin\Debug\net8.0\Arena.AI.Simulation.dll
+C:\Users\vovaf\OneDrive\Рабочий стол\Лабки\Лабки 4 курс 2 семестр\ai.arena-master\Arena.AI.Simulation\bin\Debug\net8.0\Arena.AI.Simulation.pdb
+C:\Users\vovaf\OneDrive\Рабочий стол\Лабки\Лабки 4 курс 2 семестр\ai.arena-master\Arena.AI.Simulation\bin\Debug\net8.0\Arena.AI.Core.dll
+C:\Users\vovaf\OneDrive\Рабочий стол\Лабки\Лабки 4 курс 2 семестр\ai.arena-master\Arena.AI.Simulation\bin\Debug\net8.0\Arena.AI.Core.pdb
+C:\Users\vovaf\OneDrive\Рабочий стол\Лабки\Лабки 4 курс 2 семестр\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\Arena.AI.Simulation.csproj.AssemblyReference.cache
+C:\Users\vovaf\OneDrive\Рабочий стол\Лабки\Лабки 4 курс 2 семестр\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\Arena.AI.Simulation.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\vovaf\OneDrive\Рабочий стол\Лабки\Лабки 4 курс 2 семестр\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\Arena.AI.Simulation.AssemblyInfoInputs.cache
+C:\Users\vovaf\OneDrive\Рабочий стол\Лабки\Лабки 4 курс 2 семестр\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\Arena.AI.Simulation.AssemblyInfo.cs
+C:\Users\vovaf\OneDrive\Рабочий стол\Лабки\Лабки 4 курс 2 семестр\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\Arena.AI.Simulation.csproj.CoreCompileInputs.cache
+C:\Users\vovaf\OneDrive\Рабочий стол\Лабки\Лабки 4 курс 2 семестр\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\Arena.AI.16F0AD06.Up2Date
+C:\Users\vovaf\OneDrive\Рабочий стол\Лабки\Лабки 4 курс 2 семестр\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\Arena.AI.Simulation.dll
+C:\Users\vovaf\OneDrive\Рабочий стол\Лабки\Лабки 4 курс 2 семестр\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\refint\Arena.AI.Simulation.dll
+C:\Users\vovaf\OneDrive\Рабочий стол\Лабки\Лабки 4 курс 2 семестр\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\Arena.AI.Simulation.pdb
+C:\Users\vovaf\OneDrive\Рабочий стол\Лабки\Лабки 4 курс 2 семестр\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\Arena.AI.Simulation.genruntimeconfig.cache
+C:\Users\vovaf\OneDrive\Рабочий стол\Лабки\Лабки 4 курс 2 семестр\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\ref\Arena.AI.Simulation.dll
+E:\_CПЗШІ\ai.arena-master\Arena.AI.Simulation\bin\Debug\net8.0\Arena.AI.Simulation.exe
+E:\_CПЗШІ\ai.arena-master\Arena.AI.Simulation\bin\Debug\net8.0\Arena.AI.Simulation.deps.json
+E:\_CПЗШІ\ai.arena-master\Arena.AI.Simulation\bin\Debug\net8.0\Arena.AI.Simulation.runtimeconfig.json
+E:\_CПЗШІ\ai.arena-master\Arena.AI.Simulation\bin\Debug\net8.0\Arena.AI.Simulation.dll
+E:\_CПЗШІ\ai.arena-master\Arena.AI.Simulation\bin\Debug\net8.0\Arena.AI.Simulation.pdb
+E:\_CПЗШІ\ai.arena-master\Arena.AI.Simulation\bin\Debug\net8.0\Arena.AI.Core.dll
+E:\_CПЗШІ\ai.arena-master\Arena.AI.Simulation\bin\Debug\net8.0\Arena.AI.Core.pdb
+E:\_CПЗШІ\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\Arena.AI.Simulation.csproj.AssemblyReference.cache
+E:\_CПЗШІ\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\Arena.AI.Simulation.GeneratedMSBuildEditorConfig.editorconfig
+E:\_CПЗШІ\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\Arena.AI.Simulation.AssemblyInfoInputs.cache
+E:\_CПЗШІ\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\Arena.AI.Simulation.AssemblyInfo.cs
+E:\_CПЗШІ\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\Arena.AI.Simulation.csproj.CoreCompileInputs.cache
+E:\_CПЗШІ\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\Arena.AI.16F0AD06.Up2Date
+E:\_CПЗШІ\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\Arena.AI.Simulation.dll
+E:\_CПЗШІ\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\refint\Arena.AI.Simulation.dll
+E:\_CПЗШІ\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\Arena.AI.Simulation.pdb
+E:\_CПЗШІ\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\Arena.AI.Simulation.genruntimeconfig.cache
+E:\_CПЗШІ\ai.arena-master\Arena.AI.Simulation\obj\Debug\net8.0\ref\Arena.AI.Simulation.dll
