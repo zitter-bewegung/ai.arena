@@ -4,6 +4,7 @@ namespace Arena.AI.Core.Logic.BattleLogic;
 
 public class MovementOrderManager
 {
+    private static Random rnd = new Random();
     private Unit[] _units;
     private int _index;
 
@@ -12,6 +13,7 @@ public class MovementOrderManager
         _units = teams
             .SelectMany(t => t.Units)
             .OrderByDescending(u => u.Movement)
+            .ThenBy(t => rnd.Next(100))
             .ToArray();
 
         _index = 0;

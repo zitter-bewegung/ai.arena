@@ -44,7 +44,9 @@ public static class DistanceCalculator
 
     public static void MoveAttackerCloserToTarget(Unit attacker, Unit target)
     {
-        var moveSteps = (double)rnd.Next(attacker.Movement);
+        double baseMovement = 1.0;
+
+        var moveSteps = Math.Ceiling(rnd.Next(attacker.Movement) * (1-baseMovement) + baseMovement * attacker.Movement);
 
         while(moveSteps >= DiagonalPenalty)
         {
@@ -55,6 +57,24 @@ public static class DistanceCalculator
             attacker.YPosition += yStep;
 
             moveSteps -= Math.Sqrt(xStep*xStep + yStep * yStep);
+
+            if(CanAttackWithMovement(attacker, target))
+            {
+                return;
+            }
+        }
+
+        if(Math.Abs(moveSteps - 1) < 0.1)
+        {
+            if(Math.Abs(attacker.XPosition - target.XPosition) > Math.Abs(attacker.YPosition - target.YPosition))
+            {
+                attacker.XPosition += attacker.XPosition > target.XPosition ? -1 : 1;
+            }
+            else
+            {
+                attacker.YPosition += attacker.YPosition > target.YPosition ? -1 : 1;
+            }
+
         }
     }
 

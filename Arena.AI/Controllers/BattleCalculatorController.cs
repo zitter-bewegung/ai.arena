@@ -53,7 +53,7 @@ public class BattleCalculatorController : ControllerBase
             request.TeamA,
             request.TeamB);
 
-        _buffer.Enqueue(result);
+        //_buffer.Enqueue(result);
         return result;
     }
 

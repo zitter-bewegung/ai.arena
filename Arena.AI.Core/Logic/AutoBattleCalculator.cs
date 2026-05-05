@@ -24,6 +24,7 @@ public static class AutoBattleCalculator
         {
             BattleId = battleId,
             Winner = teamA.IsAnyoneAlive ? teamA.Name : teamB.IsAnyoneAlive ? teamB.Name : string.Empty,
+            WinnerUnitsLeft = teamA.AliveUnits.Union(teamB.AliveUnits).Count(),
             Actions = actions
         };
     }
@@ -61,7 +62,7 @@ public static class AutoBattleCalculator
 
             battleActions.Add(BattleActionFactory.Attack(actor, unitToAttack));
 
-            var damage = DamageCalculations.CalculateDamage(actor, unitToAttack);
+            var damage = DamageCalculationsV0.CalculateDamage(actor, unitToAttack);
             unitToAttack.Health -= damage;
             battleActions.Add(BattleActionFactory.LooseHealth(unitToAttack, damage));
 
@@ -73,7 +74,7 @@ public static class AutoBattleCalculator
             {
                 battleActions.Add(BattleActionFactory.Attack(unitToAttack, actor));
 
-                var returnDamage = DamageCalculations.CalculateDamage(unitToAttack, actor) / 2;
+                var returnDamage = DamageCalculationsV0.CalculateDamage(unitToAttack, actor) / 2;
                 actor.Health -= returnDamage;
                 battleActions.Add(BattleActionFactory.LooseHealth(actor, returnDamage));
 
@@ -97,5 +98,6 @@ public class BattleResult
 {
     public string BattleId { get; set; }
     public string Winner {  get; set; }
+    public int? WinnerUnitsLeft { get; set; }
     public List<BattleAction> Actions { get; set; }
 }
