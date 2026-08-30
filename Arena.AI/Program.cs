@@ -29,6 +29,18 @@ builder.Services
     //.AddHostedService<QBattleResultsFlushService>()
     ;
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowLocalhost", policy =>
+    {
+        policy
+            .SetIsOriginAllowed(origin =>
+                new Uri(origin).Host.Equals("localhost", StringComparison.OrdinalIgnoreCase))
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 var app = builder.Build();
 
 ActiveBattlesManager.Init(app.Services);
@@ -40,7 +52,7 @@ ActiveBattlesManager.Init(app.Services);
     app.UseSwaggerUI();
 }
 
-app.UseCors();
+app.UseCors("AllowLocalhost");
 
 app.UseHttpsRedirection();
 
