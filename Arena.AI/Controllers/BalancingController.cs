@@ -13,21 +13,6 @@ namespace Arena.AI.Controllers;
 public class BalancingController : ControllerBase
 {
 
-    //public void Balance()
-    //{
-    //    for(int la = 0; la < 40; la++)
-    //    for(int ld = 0; ld < 40; ld++)
-    //    for(int ha = 0; ha < 40; ha++)
-    //    for(int hd = 0; hd < 40; hd++)
-    //    for(int fa = 0; fa < 40; fa++)
-    //    for(int fd = 0; fd < 40; fd++)
-    //    for(int sa = 0; sa < 40; sa++)
-    //    for(int sd = 0; sd < 40; sd++)
-    //    {
-
-    //    }
-    //}
-
     [HttpPost("objective-function/specific-team")]
     public double GetObjectiveFunctionSpecificUnits(Dictionary<UnitType, UnitDefinition> stats = null)
     {
@@ -36,106 +21,18 @@ public class BalancingController : ControllerBase
             UnitFactory.SetUnitStats(stats);
         }
 
-        const int simulationsPerPair = 100;
-        var avKills = new double[5, 5];
+        return CalculateMetrics(x => TeamGenerator.GenerateTeamOfSpecificType(x.ToString(), x), mode:1);
+    }
 
-        var values = Enum.GetValues(typeof(UnitType)).Cast<UnitType>();
-
-        var calcs = values
-            .AsParallel()
-            .SelectMany(a => values, (a, b) => (a, b))
-            .Select(pair =>
-            {
-                var typeA = pair.a;
-                var typeB = pair.b;
-
-                if((int)typeA == (int)typeB)
-                {
-                    return null;
-                }
-
-                var stats = new Stats
-                {
-                    TypeA = typeA,
-                    TypeB = typeB,
-                    KillsA = 0,
-                    KillsB = 0
-                };
-
-                for(int i = 0; i < simulationsPerPair; i++)
-                {
-
-                    var win = AutoBattleCalculator.CalculateBattle(
-                        Guid.NewGuid().ToString(),
-                        TeamGenerator.GenerateTeamOfSpecificType(typeA.ToString(), (UnitType)typeA),
-                        TeamGenerator.GenerateTeamOfSpecificType(typeB.ToString(), (UnitType)typeB));
-
-                    if((UnitType)Enum.Parse(typeof(UnitType), win.Winner) == (UnitType)typeA)
-                    {
-                        stats.KillsA += 8;
-                        stats.KillsB += 8-win.WinnerUnitsLeft.Value;
-                    }
-                    else
-                    {
-                        stats.KillsA += 8-win.WinnerUnitsLeft.Value;
-                        stats.KillsB += 8;
-                    }
-                }
-
-                return stats;
-            })
-            .Where(x => x != null)
-            .ToArray();
-
-        foreach(var stat in calcs)
+    [HttpPost("objective-function/specific-team/mode2")]
+    public double GetObjectiveFunctionSpecificUnits2(Dictionary<UnitType, UnitDefinition> stats = null)
+    {
+        if(stats != null)
         {
-            avKills[(int)stat.TypeA, (int)stat.TypeB] += 1.0 * stat.KillsA / simulationsPerPair / 2;
-            avKills[(int)stat.TypeB, (int)stat.TypeA] += 1.0 * stat.KillsB / simulationsPerPair / 2;
+            UnitFactory.SetUnitStats(stats);
         }
 
-
-        //global balance
-        /*
-        var killsObjective = 0.0;
-        var deathsObjective = 0.0;
-
-        for(int i = 0; i < 5; i++)
-        {
-            var killsPerType = 0.0;
-            var deathsPerType = 0.0;
-
-            for(int j = 0; j < 5; j++)
-            {
-                killsPerType += avKills[i, j];
-                deathsPerType += avKills[j, i];
-            }
-
-            killsObjective += Math.Pow(killsPerType / 8 / 4  - 0.5, 2);
-            deathsObjective += Math.Pow(deathsPerType / 8 / 4  - 0.5, 2);
-        }
-
-
-        return killsObjective + deathsObjective;*/
-
-        //strict balance
-
-
-        var metric2 = 0.0;
-        for(int i = 0; i < 5; i++)
-        {
-            for(int j = 0; j < 5; j++)
-            {
-                if(i == j)
-                {
-                    continue;
-                }
-
-                metric2 += Math.Pow(1.0*avKills[i, j]/8 - 0.5, 2);
-
-            }
-        }
-
-        return metric2;  
+        return CalculateMetrics(x => TeamGenerator.GenerateTeamOfSpecificType(x.ToString(), x), mode: 2);
     }
 
     [HttpPost("objective-function/winner-contribution")]
@@ -292,14 +189,31 @@ public class BalancingController : ControllerBase
             UnitFactory.SetUnitStats(stats);
         }
 
-        const int simulationsPerPair = 100;
+        return CalculateMetrics(x => TeamGenerator.GenerateSemiRandomTeam(x.ToString(), x), mode: 1);
+    }
+
+    [HttpPost("objective-function/semi-random-team/mode2")]
+    public double GetObjectiveFunctionsemiRandomUnitsMode2(Dictionary<UnitType, UnitDefinition> stats = null)
+    {
+        if(stats != null)
+        {
+            UnitFactory.SetUnitStats(stats);
+        }
+
+        return CalculateMetrics(x => TeamGenerator.GenerateSemiRandomTeam(x.ToString(), x), mode: 2);
+    }
+
+    private double CalculateMetrics(Func<UnitType, Team> teamGeneration, int mode = 1)
+    {
+        const int simulationsPerPair = 100000;
         var avKills = new double[5, 5];
 
         var values = Enum.GetValues(typeof(UnitType)).Cast<UnitType>();
 
         var calcs = values
-            .AsParallel()
             .SelectMany(a => values, (a, b) => (a, b))
+            .Where(pair => pair.a != pair.b)
+            .AsParallel()
             .Select(pair =>
             {
                 var typeA = pair.a;
@@ -323,17 +237,23 @@ public class BalancingController : ControllerBase
 
                     var win = AutoBattleCalculator.CalculateBattle(
                         Guid.NewGuid().ToString(),
-                        TeamGenerator.GenerateSemiRandomTeam(typeA.ToString(), (UnitType)typeA),
-                        TeamGenerator.GenerateSemiRandomTeam(typeB.ToString(), (UnitType)typeB));
+                        teamGeneration(pair.a),
+                        teamGeneration(pair.b));
 
+                    /*var results = win.GetDamageDealt();
+
+                    stats.KillsA = results[typeB.ToString()];
+                    stats.KillsB = results[typeA.ToString()];
+                    */
+                    
                     if((UnitType)Enum.Parse(typeof(UnitType), win.Winner) == (UnitType)typeA)
                     {
                         stats.KillsA += 8;
-                        stats.KillsB += 8-win.WinnerUnitsLeft.Value;
+                        stats.KillsB += (8-win.WinnerUnitsLeft.Value);
                     }
                     else
                     {
-                        stats.KillsA += 8-win.WinnerUnitsLeft.Value;
+                        stats.KillsA += (8-win.WinnerUnitsLeft.Value);
                         stats.KillsB += 8;
                     }
                 }
@@ -345,35 +265,103 @@ public class BalancingController : ControllerBase
 
         foreach(var stat in calcs)
         {
-            avKills[(int)stat.TypeA, (int)stat.TypeB] += 1.0 * stat.KillsA / simulationsPerPair / 2;
-            avKills[(int)stat.TypeB, (int)stat.TypeA] += 1.0 * stat.KillsB / simulationsPerPair / 2;
+            avKills[(int)stat.TypeA, (int)stat.TypeB] += 1.0 * stat.KillsA / simulationsPerPair;
+            avKills[(int)stat.TypeB, (int)stat.TypeA] += 1.0 * stat.KillsB / simulationsPerPair;
+        }
+
+        if(mode == 1)
+        {
+            // global balance
+            var killsPerTypeAr = new double[5];
+            var deathsPerTypeAr = new double[5];
+
+            for(int i = 0; i < 5; i++)
+            {
+                for(int j = 0; j < 5; j++)
+                {
+                    if(i==j)
+                    {
+                        continue;
+                    }
+
+                    killsPerTypeAr[i] += avKills[i, j];
+                    deathsPerTypeAr[i] += avKills[j, i];
+                }
+
+                killsPerTypeAr[i] /= 4;
+                deathsPerTypeAr[i] /= 4;
+            }
+
+            var avg = killsPerTypeAr.Average() + deathsPerTypeAr.Average();
+            avg /= 2;
+
+            return Math.Sqrt((CalculateMSE(killsPerTypeAr, avg) + CalculateMSE(deathsPerTypeAr, avg))/2)/avg;
+        }
+        else
+        {
+            var avg = 0.0;
+
+            for(int i = 0; i < 5; i++)
+            {
+                for(int j = 0; j < 5; j++)
+                {
+                    if(i==j)
+                    {
+                        continue;
+                    }
+
+                    avg += avKills[i, j];
+                }
+            }
+
+            avg /= 20;
+
+            var mse2 = 0.0;
+
+            for(int i = 0; i < 5; i++)
+            {
+                for(int j = 0; j < 5; j++)
+                {
+                    if(i==j)
+                    {
+                        continue;
+                    }
+
+                    mse2 += Math.Pow(avKills[i, j] - avg, 2);
+                }
+            }
+
+            mse2 /= 20;
+            var mse = Math.Sqrt(mse2);
+            return mse / avg;
         }
 
 
         //global balance
-        /* var killsObjective = 0.0;
-         var deathsObjective = 0.0;
+        var killsObjective = 0.0;
+        var deathsObjective = 0.0;
 
-         for(int i = 0; i < 5; i++)
-         {
-             var killsPerType = 0.0;
-             var deathsPerType = 0.0;
+        for(int i = 0; i < 5; i++)
+        {
+            var killsPerType = 0.0;
+            var deathsPerType = 0.0;
 
-             for(int j = 0; j < 5; j++)
-             {
-                 killsPerType += avKills[i, j];
-                 deathsPerType += avKills[j, i];
-             }
+            for(int j = 0; j < 5; j++)
+            {
+                killsPerType += avKills[i, j];
+                deathsPerType += avKills[j, i];
+            }
 
-             killsObjective += Math.Pow(killsPerType / 8 / 4  - 0.5, 2);
-             deathsObjective += Math.Pow(deathsPerType / 8 / 4  - 0.5, 2);
-         }
+            killsObjective += Math.Pow(killsPerType / 8 / 4  - 0.5, 2);
+            deathsObjective += Math.Pow(deathsPerType / 8 / 4  - 0.5, 2);
+        }
 
 
-         return killsObjective + deathsObjective; */
+        return (killsObjective + deathsObjective)/2;
 
         //strict balance
 
+        /*
 
         var metric2 = 0.0;
         for(int i = 0; i < 5; i++)
@@ -390,7 +378,14 @@ public class BalancingController : ControllerBase
             }
         }
 
-        return metric2; 
+        return metric2/5; */
+    }
+
+    private static double CalculateMSE(double[] array, double avg)
+    {
+        var mse2 = array.Select(x => Math.Pow(x - avg, 2)).Average();
+
+        return mse2;
     }
 
     public class Stats

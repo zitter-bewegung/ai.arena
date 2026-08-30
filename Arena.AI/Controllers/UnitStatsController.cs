@@ -13,7 +13,37 @@ public class UnitStatsController : ControllerBase
     public Dictionary<UnitType, UnitDefinition> Get() 
         => UnitFactory.GetUnitStats();
 
+    [HttpGet("similarity-matrix")]
+    public double[][] GetSimilarityMatrix()
+    {
+        var matrix = UnitFactory.GetSimilarityMatrix();
+        return ToJagged(matrix);
+    }
+
     [HttpPost]
     public void Set(Dictionary<UnitType, UnitDefinition> stats) 
         => UnitFactory.SetUnitStats(stats);
+
+    [HttpPost("predefined/{mode}")]
+    public void SetPredefined(int mode)
+        => UnitFactory.SetUnitStats(mode);
+
+    private static double[][] ToJagged(double[,] array)
+    {
+        int rows = array.GetLength(0);
+        int cols = array.GetLength(1);
+
+        double[][] result = new double[rows][];
+
+        for(int i = 0; i < rows; i++)
+        {
+            result[i] = new double[cols];
+            for(int j = 0; j < cols; j++)
+            {
+                result[i][j] = array[i, j];
+            }
+        }
+
+        return result;
+    }
 }

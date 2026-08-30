@@ -101,3 +101,17 @@ public class BattleResult
     public int? WinnerUnitsLeft { get; set; }
     public List<BattleAction> Actions { get; set; }
 }
+
+public static class BattleResultExtensions
+{
+    public static Dictionary<string, int> GetDamageDealt(this BattleResult battleResult)
+    {
+        var teamNames = battleResult.Actions.Select(a => a.UnitName.Split("_")[0]).Distinct().ToArray();
+
+        Dictionary<string, int> summary = new Dictionary<string, int>();
+        summary[teamNames[0]] = battleResult.Actions!.Where(a => a.ActionType == BattleActionType.LosesHealth && a.UnitName.StartsWith(teamNames[1])).Select(a => a.Amount).Sum() ?? 0;
+        summary[teamNames[1]] = battleResult.Actions!.Where(a => a.ActionType == BattleActionType.LosesHealth && a.UnitName.StartsWith(teamNames[0])).Select(a => a.Amount).Sum() ?? 0;
+
+        return summary;
+    }
+}

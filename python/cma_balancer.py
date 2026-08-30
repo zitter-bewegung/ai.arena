@@ -8,7 +8,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 def run_simulation(theta):
     # print("Running simulation with parameters:", theta)
     # url = "https://localhost:7065/Balancing/objective-function/specific-team" 
-    url = "https://localhost:7065/Balancing/objective-function/survival-rate" 
+    url = "https://localhost:7065/Balancing/objective-function/winner-contribution" 
 
     ad = [round(x * 30) for x in theta]
     payload = {
@@ -26,7 +26,7 @@ def run_simulation(theta):
 def objective(theta):
     return run_simulation(theta)  # your expensive function
 
-initial_parameters = [13, 13, 15, 18, 15, 9, 17, 10, 3, 1]  # example initial guess
+initial_parameters = [28, 11, 7, 30, 29, 11, 17, 5, 0, 10]  # example initial guess
 normalized_parameters = [x / 30 for x in initial_parameters]  # normalize to [0, 1]
 
 es = cma.CMAEvolutionStrategy(normalized_parameters, 0.5, {
