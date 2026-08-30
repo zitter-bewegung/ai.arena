@@ -73,6 +73,7 @@ const Arena = () => {
   const [currentStep, setCurrentStep] = useState(-1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [playbackPanelHidden, setPlaybackPanelHidden] = useState(false);
   const isPlayingRef = useRef(false);
   isPlayingRef.current = isPlaying;
 
@@ -258,7 +259,7 @@ const Arena = () => {
 
     const playableMinX = 1;
     const playableMinY = 0;
-    const playableMaxX = cols - 1;
+    const playableMaxX = cols;
     const playableMaxY = rows - 1;
 
     const playableCols = playableMaxX - playableMinX;
@@ -275,15 +276,13 @@ const Arena = () => {
       return `${letter}${number}`;
     };
 
-    const riverCol = playableMinX + Math.floor(playableCols / 2);
-    const riverRow = playableMinY + Math.floor(playableRows / 2);
+    const centerCol = playableMinX + Math.floor(playableCols / 2);
 
     const isOutOfBounds = (x, y) =>
       x < playableMinX || x >= playableMaxX || y < playableMinY || y >= playableMaxY;
-    const isRiver = (x, y) => x === riverCol || y === riverRow;
 
-    const inTeamAZone = (x) => x < riverCol;
-    const inTeamBZone = (x) => x > riverCol;
+    const inTeamAZone = (x) => x < centerCol;
+    const inTeamBZone = (x) => x >= centerCol;
 
     const desiredPerTeam = Math.max(1, unitsPerTeam);
 
@@ -338,7 +337,6 @@ const Arena = () => {
           const cy = y + dy;
 
           if (isOutOfBounds(cx, cy)) return false;
-          if (isRiver(cx, cy)) return false;
           if (team === "A" && !inTeamAZone(cx)) return false;
           if (team === "B" && !inTeamBZone(cx)) return false;
           if (occupied.has(keyOf(cx, cy))) return false;
@@ -384,8 +382,8 @@ const Arena = () => {
         if (maxX < minX || maxY < minY) return null;
 
         let x = randomInt(minX, maxX);
-        if (team === "A") x = randomInt(minX, Math.min(maxX, riverCol - 1));
-        if (team === "B") x = randomInt(Math.max(minX, riverCol + 1), maxX);
+        if (team === "A") x = randomInt(minX, Math.min(maxX, centerCol - 1));
+        if (team === "B") x = randomInt(Math.max(minX, centerCol), maxX);
 
         const y = randomInt(minY, maxY);
 
@@ -502,15 +500,11 @@ const Arena = () => {
 
     const playableMinX = 1;
     const playableMinY = 0;
-    const playableMaxX = cols - 1;
+    const playableMaxX = cols;
     const playableMaxY = rows - 1;
 
     const playableCols = playableMaxX - playableMinX;
     const playableRows = playableMaxY - playableMinY;
-
-    const riverCol = playableMinX + Math.floor(playableCols / 2);
-    const riverRow = playableMinY + Math.floor(playableRows / 2);
-    const isRiver = (x, y) => x === riverCol || y === riverRow;
 
     const cellToCoord = (x, y) => {
       const colIndex = x - playableMinX;
@@ -1344,22 +1338,67 @@ const Arena = () => {
           bottom: '16px',
           left: '16px',
           zIndex: 50,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '6px',
-          backgroundColor: 'rgba(0,0,0,0.8)',
-          borderRadius: '8px',
-          padding: '10px 14px',
-          fontFamily: 'monospace',
-          fontSize: '12px',
-          color: '#fff',
-          userSelect: 'none',
           pointerEvents: 'auto',
-          backdropFilter: 'blur(8px)',
-          minWidth: '320px',
         }}
       >
-        {/* Playback buttons row */}
+        {playbackPanelHidden ? (
+          <button
+            type="button"
+            onClick={() => setPlaybackPanelHidden(false)}
+            title="Show playback controls"
+            style={{
+              backgroundColor: 'rgba(0,0,0,0.8)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              borderRadius: '8px',
+              color: '#fff',
+              fontSize: '18px',
+              width: '40px',
+              height: '40px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {'▶'}
+          </button>
+        ) : (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px',
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            borderRadius: '8px',
+            padding: '10px 14px',
+            fontFamily: 'monospace',
+            fontSize: '12px',
+            color: '#fff',
+            userSelect: 'none',
+            backdropFilter: 'blur(8px)',
+            minWidth: '320px',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '-2px' }}>
+            <button
+              type="button"
+              onClick={() => setPlaybackPanelHidden(true)}
+              title="Hide playback controls"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#888',
+                fontSize: '14px',
+                cursor: 'pointer',
+                padding: '0 2px',
+                lineHeight: 1,
+              }}
+            >
+              {'✕'}
+            </button>
+          </div>
+          {/* Playback buttons row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <button
             type="button"
@@ -1499,6 +1538,8 @@ const Arena = () => {
               ))}
             </select>
           </div>
+        )}
+        </div>
         )}
       </div>,
       document.getElementById('overlay-root')
